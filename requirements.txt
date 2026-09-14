@@ -1,0 +1,21 @@
+# Core dependencies. Everything the default path needs: curate, train, predict,
+# optimize, screen.
+#
+# Lower bounds, not pins. The exact versions the released results were produced
+# with are recorded in data/provenance.json and artifacts/metadata.json, and
+# those are what a reproduction should match.
+
+rdkit>=2024.3.1
+numpy>=1.26
+pandas>=2.2
+scipy>=1.11
+scikit-learn>=1.4
+joblib>=1.3
+pyarrow>=15.0          # parquet I/O
+requests>=2.31         # ChEMBL / CO-ADD / BindingDB downloads
+
+# Optional extras are NOT installed by this file. Install them only if needed:
+#
+#   pip install -e .[gnn]     torch>=2.2   - D-MPNN backend, wants a GPU
+#   pip install -e .[api]     fastapi, uvicorn, pydantic - `chemrob serve`
+#   pip install -e .[dev]     pytest       - test suite

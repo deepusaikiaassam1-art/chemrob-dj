@@ -1,0 +1,16 @@
+{
+  "anticancer": 0.0,
+  "anti_inflammatory": 0.0,
+  "antidiabetic": 0.1,
+  "antihypertensive": 0.0,
+  "antiviral_hiv": 0.0,
+  "antidepressant_cns": 0.0,
+  "analgesic_opioid": 0.05,
+  "antihistaminic": 0.0,
+  "antithrombotic": 0.0,
+  "anti_alzheimer": 0.05,
+  "antiparkinson": 0.05,
+  "antibacterial": 0.0,
+  "antifungal": 0.0,
+  "antiprotozoal": 0.0
+}

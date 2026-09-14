@@ -1,0 +1,193 @@
+{
+  "weights": {
+    "anticancer": 0.0,
+    "anti_inflammatory": 0.0,
+    "antidiabetic": 0.1,
+    "antihypertensive": 0.0,
+    "antiviral_hiv": 0.0,
+    "antidepressant_cns": 0.0,
+    "analgesic_opioid": 0.05,
+    "antihistaminic": 0.0,
+    "antithrombotic": 0.0,
+    "anti_alzheimer": 0.05,
+    "antiparkinson": 0.05,
+    "antibacterial": 0.0,
+    "antifungal": 0.0,
+    "antiprotozoal": 0.0
+  },
+  "baseline": {
+    "n_tasks_evaluated": 14,
+    "n_labels": 24197,
+    "macro_auroc": 0.9273,
+    "macro_auprc": 0.9047,
+    "weighted_auroc": 0.9155,
+    "weighted_auprc": 0.8963,
+    "macro_f1": 0.836,
+    "macro_mcc": 0.7171,
+    "mean_auprc_lift": 2.309
+  },
+  "dmpnn": {
+    "n_tasks_evaluated": 14,
+    "n_labels": 24197,
+    "macro_auroc": 0.8151,
+    "macro_auprc": 0.7583,
+    "weighted_auroc": 0.7961,
+    "weighted_auprc": 0.7534,
+    "macro_f1": 0.7077,
+    "macro_mcc": 0.4457,
+    "mean_auprc_lift": 1.897
+  },
+  "ensemble": {
+    "n_tasks_evaluated": 14,
+    "n_labels": 24197,
+    "macro_auroc": 0.9274,
+    "macro_auprc": 0.9048,
+    "weighted_auroc": 0.9156,
+    "weighted_auprc": 0.8964,
+    "macro_f1": 0.8362,
+    "macro_mcc": 0.7174,
+    "mean_auprc_lift": 2.309
+  },
+  "per_class": [
+    {
+      "task": "anticancer",
+      "n": 3125,
+      "n_positive": 1511,
+      "auprc_baseline": 0.8992,
+      "auprc_dmpnn": 0.7209,
+      "auprc_ensemble": 0.8992,
+      "weight": 0.0,
+      "gain": 0.0
+    },
+    {
+      "task": "anti_inflammatory",
+      "n": 1177,
+      "n_positive": 320,
+      "auprc_baseline": 0.8561,
+      "auprc_dmpnn": 0.6225,
+      "auprc_ensemble": 0.8561,
+      "weight": 0.0,
+      "gain": 0.0
+    },
+    {
+      "task": "antidiabetic",
+      "n": 838,
+      "n_positive": 353,
+      "auprc_baseline": 0.9025,
+      "auprc_dmpnn": 0.7723,
+      "auprc_ensemble": 0.9034,
+      "weight": 0.1,
+      "gain": 0.0009
+    },
+    {
+      "task": "antihypertensive",
+      "n": 669,
+      "n_positive": 310,
+      "auprc_baseline": 0.9613,
+      "auprc_dmpnn": 0.7992,
+      "auprc_ensemble": 0.9613,
+      "weight": 0.0,
+      "gain": 0.0
+    },
+    {
+      "task": "antiviral_hiv",
+      "n": 1111,
+      "n_positive": 577,
+      "auprc_baseline": 0.9543,
+      "auprc_dmpnn": 0.8612,
+      "auprc_ensemble": 0.9543,
+      "weight": 0.0,
+      "gain": 0.0
+    },
+    {
+      "task": "antidepressant_cns",
+      "n": 1502,
+      "n_positive": 614,
+      "auprc_baseline": 0.9341,
+      "auprc_dmpnn": 0.8273,
+      "auprc_ensemble": 0.9341,
+      "weight": 0.0,
+      "gain": 0.0
+    },
+    {
+      "task": "analgesic_opioid",
+      "n": 1431,
+      "n_positive": 638,
+      "auprc_baseline": 0.9285,
+      "auprc_dmpnn": 0.8148,
+      "auprc_ensemble": 0.9285,
+      "weight": 0.05,
+      "gain": 0.0
+    },
+    {
+      "task": "antihistaminic",
+      "n": 866,
+      "n_positive": 492,
+      "auprc_baseline": 0.973,
+      "auprc_dmpnn": 0.9059,
+      "auprc_ensemble": 0.973,
+      "weight": 0.0,
+      "gain": 0.0
+    },
+    {
+      "task": "antithrombotic",
+      "n": 1204,
+      "n_positive": 509,
+      "auprc_baseline": 0.9178,
+      "auprc_dmpnn": 0.6976,
+      "auprc_ensemble": 0.9178,
+      "weight": 0.0,
+      "gain": 0.0
+    },
+    {
+      "task": "anti_alzheimer",
+      "n": 1605,
+      "n_positive": 678,
+      "auprc_baseline": 0.8975,
+      "auprc_dmpnn": 0.7705,
+      "auprc_ensemble": 0.8979,
+      "weight": 0.05,
+      "gain": 0.0004
+    },
+    {
+      "task": "antiparkinson",
+      "n": 1929,
+      "n_positive": 772,
+      "auprc_baseline": 0.9269,
+      "auprc_dmpnn": 0.7109,
+      "auprc_ensemble": 0.927,
+      "weight": 0.05,
+      "gain": 0.0001
+    },
+    {
+      "task": "antibacterial",
+      "n": 4061,
+      "n_positive": 1174,
+      "auprc_baseline": 0.7791,
+      "auprc_dmpnn": 0.6304,
+      "auprc_ensemble": 0.7791,
+      "weight": 0.0,
+      "gain": 0.0
+    },
+    {
+      "task": "antifungal",
+      "n": 943,
+      "n_positive": 157,
+      "auprc_baseline": 0.7673,
+      "auprc_dmpnn": 0.5849,
+      "auprc_ensemble": 0.7673,
+      "weight": 0.0,
+      "gain": 0.0
+    },
+    {
+      "task": "antiprotozoal",
+      "n": 3736,
+      "n_positive": 2864,
+      "auprc_baseline": 0.9679,
+      "auprc_dmpnn": 0.8974,
+      "auprc_ensemble": 0.9679,
+      "weight": 0.0,
+      "gain": 0.0
+    }
+  ]
+}

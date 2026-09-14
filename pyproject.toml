@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chemrob-dj"
+version = "0.2.0"
+description = "ChemRob DJ - structure-based pharmacological activity prediction and lead optimization"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Deepjyoti Saikia" }]
+keywords = ["cheminformatics", "QSAR", "drug-discovery", "rdkit", "chembl"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Operating System :: OS Independent",
+]
+
+# Everything needed for the default path: predict, optimize, screen, serve.
+# PyTorch is deliberately not here - it is a large download and only the
+# optional graph-network backend uses it.
+dependencies = [
+    "rdkit>=2024.3.1",
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",
+    "joblib>=1.3",
+    "pyarrow>=15.0",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+gnn = ["torch>=2.2"]          # D-MPNN backend; needs a GPU to be worth training
+api = ["fastapi>=0.110", "uvicorn>=0.27", "pydantic>=2.6"]   # `chemrob serve`
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+chemrob = "chemrob.cli:main"
+
+[project.urls]
+# Set these on the first push; CITATION.cff carries the same placeholder.
+Homepage = "https://github.com/USERNAME/chemrob-dj"
+Repository = "https://github.com/USERNAME/chemrob-dj"
+Issues = "https://github.com/USERNAME/chemrob-dj/issues"
+
+[tool.setuptools]
+# The compatibility shim is a runtime alias for old pickles, not something to
+# ship as an installed package.
+packages = ["chemrob", "chemrob.models"]
+
+[tool.setuptools.package-data]
+chemrob = ["static/*.html"]

@@ -1,0 +1,181 @@
+{
+  "n_common_molecules": 17653,
+  "old": {
+    "n_tasks_evaluated": 14,
+    "n_labels": 20137,
+    "macro_auroc": 0.9276,
+    "macro_auprc": 0.9013,
+    "weighted_auroc": 0.9101,
+    "weighted_auprc": 0.882,
+    "macro_f1": 0.8261,
+    "macro_mcc": 0.7096,
+    "mean_auprc_lift": 2.331
+  },
+  "new": {
+    "n_tasks_evaluated": 14,
+    "n_labels": 20137,
+    "macro_auroc": 0.9279,
+    "macro_auprc": 0.903,
+    "weighted_auroc": 0.9103,
+    "weighted_auprc": 0.8835,
+    "macro_f1": 0.826,
+    "macro_mcc": 0.7081,
+    "mean_auprc_lift": 2.342
+  },
+  "per_class": [
+    {
+      "task": "anticancer",
+      "n": 2349,
+      "n_positive": 1097,
+      "auroc_old": 0.9047,
+      "auprc_old": 0.8948,
+      "auroc_new": 0.9042,
+      "auprc_new": 0.894,
+      "d_auprc": -0.0008,
+      "d_auroc": -0.0005
+    },
+    {
+      "task": "anti_inflammatory",
+      "n": 875,
+      "n_positive": 233,
+      "auroc_old": 0.9428,
+      "auprc_old": 0.8909,
+      "auroc_new": 0.9328,
+      "auprc_new": 0.8844,
+      "d_auprc": -0.0065,
+      "d_auroc": -0.01
+    },
+    {
+      "task": "antidiabetic",
+      "n": 603,
+      "n_positive": 258,
+      "auroc_old": 0.9285,
+      "auprc_old": 0.9147,
+      "auroc_new": 0.9388,
+      "auprc_new": 0.9255,
+      "d_auprc": 0.0108,
+      "d_auroc": 0.0103
+    },
+    {
+      "task": "antihypertensive",
+      "n": 520,
+      "n_positive": 265,
+      "auroc_old": 0.9707,
+      "auprc_old": 0.9703,
+      "auroc_new": 0.9721,
+      "auprc_new": 0.9715,
+      "d_auprc": 0.0012,
+      "d_auroc": 0.0014
+    },
+    {
+      "task": "antiviral_hiv",
+      "n": 864,
+      "n_positive": 440,
+      "auroc_old": 0.954,
+      "auprc_old": 0.9553,
+      "auroc_new": 0.9516,
+      "auprc_new": 0.9528,
+      "d_auprc": -0.0025,
+      "d_auroc": -0.0024
+    },
+    {
+      "task": "antidepressant_cns",
+      "n": 1192,
+      "n_positive": 482,
+      "auroc_old": 0.95,
+      "auprc_old": 0.9417,
+      "auroc_new": 0.9516,
+      "auprc_new": 0.9414,
+      "d_auprc": -0.0003,
+      "d_auroc": 0.0016
+    },
+    {
+      "task": "analgesic_opioid",
+      "n": 1085,
+      "n_positive": 512,
+      "auroc_old": 0.9392,
+      "auprc_old": 0.9292,
+      "auroc_new": 0.9417,
+      "auprc_new": 0.9357,
+      "d_auprc": 0.0065,
+      "d_auroc": 0.0025
+    },
+    {
+      "task": "antihistaminic",
+      "n": 663,
+      "n_positive": 393,
+      "auroc_old": 0.9638,
+      "auprc_old": 0.9731,
+      "auroc_new": 0.9651,
+      "auprc_new": 0.9718,
+      "d_auprc": -0.0013,
+      "d_auroc": 0.0013
+    },
+    {
+      "task": "antithrombotic",
+      "n": 942,
+      "n_positive": 387,
+      "auroc_old": 0.9578,
+      "auprc_old": 0.9433,
+      "auroc_new": 0.9469,
+      "auprc_new": 0.9284,
+      "d_auprc": -0.0149,
+      "d_auroc": -0.0109
+    },
+    {
+      "task": "anti_alzheimer",
+      "n": 1251,
+      "n_positive": 521,
+      "auroc_old": 0.9207,
+      "auprc_old": 0.9046,
+      "auroc_new": 0.9255,
+      "auprc_new": 0.9102,
+      "d_auprc": 0.0056,
+      "d_auroc": 0.0048
+    },
+    {
+      "task": "antiparkinson",
+      "n": 1550,
+      "n_positive": 634,
+      "auroc_old": 0.945,
+      "auprc_old": 0.9322,
+      "auroc_new": 0.946,
+      "auprc_new": 0.9348,
+      "d_auprc": 0.0026,
+      "d_auroc": 0.001
+    },
+    {
+      "task": "antibacterial",
+      "n": 3738,
+      "n_positive": 1007,
+      "auroc_old": 0.8625,
+      "auprc_old": 0.7626,
+      "auroc_new": 0.8661,
+      "auprc_new": 0.7642,
+      "d_auprc": 0.0016,
+      "d_auroc": 0.0036
+    },
+    {
+      "task": "antifungal",
+      "n": 1260,
+      "n_positive": 180,
+      "auroc_old": 0.8626,
+      "auprc_old": 0.6578,
+      "auroc_new": 0.8693,
+      "auprc_new": 0.6796,
+      "d_auprc": 0.0218,
+      "d_auroc": 0.0067
+    },
+    {
+      "task": "antiprotozoal",
+      "n": 3245,
+      "n_positive": 2301,
+      "auroc_old": 0.8837,
+      "auprc_old": 0.9483,
+      "auroc_new": 0.8788,
+      "auprc_new": 0.9475,
+      "d_auprc": -0.0008,
+      "d_auroc": -0.0049
+    }
+  ]
+}

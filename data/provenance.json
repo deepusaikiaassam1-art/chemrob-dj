@@ -1,0 +1,25 @@
+{
+  "chembl_release": "ChEMBL_37",
+  "chembl_fetched_from": "2026-09-02",
+  "chembl_fetched_to": "2026-09-03",
+  "chembl_cached_targets": 57,
+  "coadd_release": "CO-ADD_DoseResponseData_r03_01-02-2020_CSV.zip",
+  "bindingdb_included": false,
+  "built": "2026-09-06",
+  "max_records_per_target": 60000,
+  "sources": [
+    "CO-ADD",
+    "ChEMBL"
+  ],
+  "n_raw_records": 1030878,
+  "n_curated_molecules": 324098,
+  "versions": {
+    "python": "3.14.2",
+    "rdkit": "2026.03.5",
+    "sklearn": "1.8.0",
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "scipy": "1.17.1",
+    "joblib": "1.5.3"
+  }
+}

@@ -1,0 +1,350 @@
+{
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 1.59068,
+      "valid_macro_auprc": 0.5248,
+      "valid_macro_auroc": 0.6166,
+      "seconds": 181.0,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 2,
+      "train_loss": 1.48948,
+      "valid_macro_auprc": 0.565,
+      "valid_macro_auroc": 0.6567,
+      "seconds": 147.0,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 3,
+      "train_loss": 1.41434,
+      "valid_macro_auprc": 0.6152,
+      "valid_macro_auroc": 0.7016,
+      "seconds": 145.8,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 4,
+      "train_loss": 1.36018,
+      "valid_macro_auprc": 0.6493,
+      "valid_macro_auroc": 0.72,
+      "seconds": 144.6,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 5,
+      "train_loss": 1.32172,
+      "valid_macro_auprc": 0.6654,
+      "valid_macro_auroc": 0.7371,
+      "seconds": 144.6,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 6,
+      "train_loss": 1.29429,
+      "valid_macro_auprc": 0.6793,
+      "valid_macro_auroc": 0.7479,
+      "seconds": 145.2,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 7,
+      "train_loss": 1.26501,
+      "valid_macro_auprc": 0.6906,
+      "valid_macro_auroc": 0.7565,
+      "seconds": 144.9,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 8,
+      "train_loss": 1.23929,
+      "valid_macro_auprc": 0.7072,
+      "valid_macro_auroc": 0.769,
+      "seconds": 145.0,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 9,
+      "train_loss": 1.21603,
+      "valid_macro_auprc": 0.7159,
+      "valid_macro_auroc": 0.7745,
+      "seconds": 144.2,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 10,
+      "train_loss": 1.19811,
+      "valid_macro_auprc": 0.7185,
+      "valid_macro_auroc": 0.7798,
+      "seconds": 144.2,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 11,
+      "train_loss": 1.16933,
+      "valid_macro_auprc": 0.7238,
+      "valid_macro_auroc": 0.7824,
+      "seconds": 145.5,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 12,
+      "train_loss": 1.15499,
+      "valid_macro_auprc": 0.7394,
+      "valid_macro_auroc": 0.793,
+      "seconds": 145.0,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 13,
+      "train_loss": 1.13956,
+      "valid_macro_auprc": 0.743,
+      "valid_macro_auroc": 0.7975,
+      "seconds": 145.2,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 14,
+      "train_loss": 1.1151,
+      "valid_macro_auprc": 0.7419,
+      "valid_macro_auroc": 0.802,
+      "seconds": 145.4,
+      "lr": 0.0008
+    },
+    {
+      "epoch": 15,
+      "train_loss": 1.10447,
+      "valid_macro_auprc": 0.7518,
+      "valid_macro_auroc": 0.8065,
+      "seconds": 144.8,
+      "lr": 0.0008
+    }
+  ],
+  "best_valid_macro_auprc": 0.7518,
+  "test_activity": {
+    "per_task": [
+      {
+        "task": "anticancer",
+        "n": 3125,
+        "n_positive": 1511,
+        "positive_rate": 0.4835,
+        "auroc": 0.7342,
+        "auprc": 0.7209,
+        "auprc_lift": 1.491,
+        "f1": 0.6979,
+        "precision": 0.6024,
+        "recall": 0.8293,
+        "balanced_accuracy": 0.6584,
+        "mcc": 0.3356
+      },
+      {
+        "task": "anti_inflammatory",
+        "n": 1177,
+        "n_positive": 320,
+        "positive_rate": 0.2719,
+        "auroc": 0.8021,
+        "auprc": 0.6225,
+        "auprc_lift": 2.29,
+        "f1": 0.5573,
+        "precision": 0.411,
+        "recall": 0.8656,
+        "balanced_accuracy": 0.7012,
+        "mcc": 0.3619
+      },
+      {
+        "task": "antidiabetic",
+        "n": 838,
+        "n_positive": 353,
+        "positive_rate": 0.4212,
+        "auroc": 0.8271,
+        "auprc": 0.7723,
+        "auprc_lift": 1.833,
+        "f1": 0.7083,
+        "precision": 0.6797,
+        "recall": 0.7394,
+        "balanced_accuracy": 0.7429,
+        "mcc": 0.4814
+      },
+      {
+        "task": "antihypertensive",
+        "n": 669,
+        "n_positive": 310,
+        "positive_rate": 0.4634,
+        "auroc": 0.8391,
+        "auprc": 0.7992,
+        "auprc_lift": 1.725,
+        "f1": 0.7546,
+        "precision": 0.6734,
+        "recall": 0.8581,
+        "balanced_accuracy": 0.7494,
+        "mcc": 0.5057
+      },
+      {
+        "task": "antiviral_hiv",
+        "n": 1111,
+        "n_positive": 577,
+        "positive_rate": 0.5194,
+        "auroc": 0.883,
+        "auprc": 0.8612,
+        "auprc_lift": 1.658,
+        "f1": 0.8243,
+        "precision": 0.742,
+        "recall": 0.9272,
+        "balanced_accuracy": 0.7894,
+        "mcc": 0.606
+      },
+      {
+        "task": "antidepressant_cns",
+        "n": 1502,
+        "n_positive": 614,
+        "positive_rate": 0.4088,
+        "auroc": 0.8834,
+        "auprc": 0.8273,
+        "auprc_lift": 2.024,
+        "f1": 0.7665,
+        "precision": 0.6841,
+        "recall": 0.8713,
+        "balanced_accuracy": 0.7966,
+        "mcc": 0.5837
+      },
+      {
+        "task": "analgesic_opioid",
+        "n": 1431,
+        "n_positive": 638,
+        "positive_rate": 0.4458,
+        "auroc": 0.856,
+        "auprc": 0.8148,
+        "auprc_lift": 1.828,
+        "f1": 0.7562,
+        "precision": 0.7113,
+        "recall": 0.8072,
+        "balanced_accuracy": 0.7718,
+        "mcc": 0.5405
+      },
+      {
+        "task": "antihistaminic",
+        "n": 866,
+        "n_positive": 492,
+        "positive_rate": 0.5681,
+        "auroc": 0.8873,
+        "auprc": 0.9059,
+        "auprc_lift": 1.594,
+        "f1": 0.8463,
+        "precision": 0.7772,
+        "recall": 0.9289,
+        "balanced_accuracy": 0.7893,
+        "mcc": 0.6139
+      },
+      {
+        "task": "antithrombotic",
+        "n": 1204,
+        "n_positive": 509,
+        "positive_rate": 0.4228,
+        "auroc": 0.7878,
+        "auprc": 0.6976,
+        "auprc_lift": 1.65,
+        "f1": 0.6884,
+        "precision": 0.5597,
+        "recall": 0.8939,
+        "balanced_accuracy": 0.6894,
+        "mcc": 0.3996
+      },
+      {
+        "task": "anti_alzheimer",
+        "n": 1605,
+        "n_positive": 678,
+        "positive_rate": 0.4224,
+        "auroc": 0.8138,
+        "auprc": 0.7705,
+        "auprc_lift": 1.824,
+        "f1": 0.7003,
+        "precision": 0.6119,
+        "recall": 0.8186,
+        "balanced_accuracy": 0.7194,
+        "mcc": 0.4373
+      },
+      {
+        "task": "antiparkinson",
+        "n": 1929,
+        "n_positive": 772,
+        "positive_rate": 0.4002,
+        "auroc": 0.7846,
+        "auprc": 0.7109,
+        "auprc_lift": 1.776,
+        "f1": 0.6615,
+        "precision": 0.5301,
+        "recall": 0.8795,
+        "balanced_accuracy": 0.6796,
+        "mcc": 0.3726
+      },
+      {
+        "task": "antibacterial",
+        "n": 4061,
+        "n_positive": 1174,
+        "positive_rate": 0.2891,
+        "auroc": 0.7809,
+        "auprc": 0.6304,
+        "auprc_lift": 2.181,
+        "f1": 0.579,
+        "precision": 0.4809,
+        "recall": 0.7274,
+        "balanced_accuracy": 0.704,
+        "mcc": 0.3729
+      },
+      {
+        "task": "antifungal",
+        "n": 943,
+        "n_positive": 157,
+        "positive_rate": 0.1665,
+        "auroc": 0.7863,
+        "auprc": 0.5849,
+        "auprc_lift": 3.513,
+        "f1": 0.5013,
+        "precision": 0.4132,
+        "recall": 0.6369,
+        "balanced_accuracy": 0.7281,
+        "mcc": 0.3892
+      },
+      {
+        "task": "antiprotozoal",
+        "n": 3736,
+        "n_positive": 2864,
+        "positive_rate": 0.7666,
+        "auroc": 0.7463,
+        "auprc": 0.8974,
+        "auprc_lift": 1.171,
+        "f1": 0.8662,
+        "precision": 0.7989,
+        "recall": 0.9459,
+        "balanced_accuracy": 0.5819,
+        "mcc": 0.2393
+      }
+    ],
+    "summary": {
+      "n_tasks_evaluated": 14,
+      "n_labels": 24197,
+      "macro_auroc": 0.8151,
+      "macro_auprc": 0.7583,
+      "weighted_auroc": 0.7961,
+      "weighted_auprc": 0.7534,
+      "macro_f1": 0.7077,
+      "macro_mcc": 0.4457,
+      "mean_auprc_lift": 1.897
+    }
+  },
+  "test_target": {
+    "summary": {
+      "n_tasks_evaluated": 44,
+      "n_labels": 29060,
+      "macro_auroc": 0.798,
+      "macro_auprc": 0.6671,
+      "weighted_auroc": 0.8027,
+      "weighted_auprc": 0.6994,
+      "macro_f1": 0.6265,
+      "macro_mcc": 0.3932,
+      "mean_auprc_lift": 2.183
+    }
+  },
+  "n_parameters": 424201
+}

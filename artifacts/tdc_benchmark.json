@@ -1,0 +1,76 @@
+{
+  "note": "Zero-shot transfer: this model was never trained on any TDC benchmark. Leaderboard entries are trained on each benchmark's own split, so the comparison is not like-for-like and favours them.",
+  "excluded_training_overlap": true,
+  "per_benchmark": [
+    {
+      "benchmark": "hERG blockade (Karim et al.)",
+      "file": "herg.tab",
+      "head": "herg_liability",
+      "n_total": 655,
+      "n_overlapping_training": 262,
+      "n_scored": 385,
+      "positive_rate": 0.6779,
+      "auroc": 0.8255,
+      "auprc": 0.8804,
+      "auprc_lift": 1.299,
+      "mcc": 0.5021,
+      "published_leaderboard": "AUROC ~0.74-0.88 (models trained on this benchmark)"
+    },
+    {
+      "benchmark": "CYP2D6 inhibition (Veith et al.)",
+      "file": "cyp2d6_veith.tab",
+      "head": "cyp2d6_inhibition",
+      "n_total": 13130,
+      "n_overlapping_training": 5829,
+      "n_scored": 7163,
+      "positive_rate": 0.1303,
+      "auroc": 0.743,
+      "auprc": 0.3275,
+      "auprc_lift": 2.514,
+      "mcc": 0.1344,
+      "published_leaderboard": "AUPRC ~0.62-0.74"
+    },
+    {
+      "benchmark": "CYP3A4 inhibition (Veith et al.)",
+      "file": "cyp3a4_veith.tab",
+      "head": "cyp3a4_inhibition",
+      "n_total": 12328,
+      "n_overlapping_training": 5467,
+      "n_scored": 6722,
+      "positive_rate": 0.3207,
+      "auroc": 0.7845,
+      "auprc": 0.614,
+      "auprc_lift": 1.914,
+      "mcc": 0.2338,
+      "published_leaderboard": "AUPRC ~0.79-0.88"
+    },
+    {
+      "benchmark": "CYP2C9 inhibition (Veith et al.)",
+      "file": "cyp2c9_veith.tab",
+      "head": "cyp2c9_inhibition",
+      "n_total": 12092,
+      "n_overlapping_training": 5354,
+      "n_scored": 6595,
+      "positive_rate": 0.2664,
+      "auroc": 0.8003,
+      "auprc": 0.5707,
+      "auprc_lift": 2.142,
+      "mcc": 0.1884,
+      "published_leaderboard": "AUPRC ~0.72-0.83"
+    },
+    {
+      "benchmark": "P-gp inhibition (Broccatelli et al.)",
+      "file": "pgp_broccatelli.tab",
+      "head": "pgp_efflux",
+      "n_total": 1219,
+      "n_overlapping_training": 375,
+      "n_scored": 841,
+      "positive_rate": 0.5446,
+      "auroc": 0.9113,
+      "auprc": 0.9316,
+      "auprc_lift": 1.711,
+      "mcc": 0.627,
+      "published_leaderboard": "AUROC ~0.90-0.94"
+    }
+  ]
+}

@@ -1,0 +1,504 @@
+{
+  "source": "BindingDB 202609 (Articles + PDSPKi) - excluded from training",
+  "n_molecules": 6239,
+  "n_evaluable_classes": 21,
+  "label_counts": {
+    "anticancer": {
+      "labelled": 1687,
+      "positive": 884
+    },
+    "anti_inflammatory": {
+      "labelled": 357,
+      "positive": 106
+    },
+    "antidiabetic": {
+      "labelled": 412,
+      "positive": 154
+    },
+    "antihypertensive": {
+      "labelled": 55,
+      "positive": 29
+    },
+    "antiviral_hiv": {
+      "labelled": 0,
+      "positive": 0
+    },
+    "antidepressant_cns": {
+      "labelled": 318,
+      "positive": 131
+    },
+    "analgesic_opioid": {
+      "labelled": 174,
+      "positive": 125
+    },
+    "antihistaminic": {
+      "labelled": 123,
+      "positive": 62
+    },
+    "antithrombotic": {
+      "labelled": 504,
+      "positive": 249
+    },
+    "anti_alzheimer": {
+      "labelled": 523,
+      "positive": 192
+    },
+    "antiparkinson": {
+      "labelled": 447,
+      "positive": 153
+    },
+    "antibacterial": {
+      "labelled": 0,
+      "positive": 0
+    },
+    "antifungal": {
+      "labelled": 0,
+      "positive": 0
+    },
+    "antiprotozoal": {
+      "labelled": 0,
+      "positive": 0
+    },
+    "herg_liability": {
+      "labelled": 0,
+      "positive": 0
+    },
+    "cyp3a4_inhibition": {
+      "labelled": 0,
+      "positive": 0
+    },
+    "cyp2d6_inhibition": {
+      "labelled": 0,
+      "positive": 0
+    },
+    "cyp2c9_inhibition": {
+      "labelled": 0,
+      "positive": 0
+    },
+    "cyp1a2_inhibition": {
+      "labelled": 0,
+      "positive": 0
+    },
+    "cyp2c19_inhibition": {
+      "labelled": 0,
+      "positive": 0
+    },
+    "pgp_efflux": {
+      "labelled": 0,
+      "positive": 0
+    }
+  },
+  "summary": {
+    "n_tasks_evaluated": 10,
+    "n_labels": 4600,
+    "macro_auroc": 0.9008,
+    "macro_auprc": 0.8779,
+    "weighted_auroc": 0.8821,
+    "weighted_auprc": 0.8617,
+    "macro_f1": 0.7695,
+    "macro_mcc": 0.6434,
+    "mean_auprc_lift": 2.018
+  },
+  "summary_by_block": {
+    "therapeutic": {
+      "n_tasks_evaluated": 10,
+      "n_labels": 4600,
+      "macro_auroc": 0.9008,
+      "macro_auprc": 0.8779,
+      "weighted_auroc": 0.8821,
+      "weighted_auprc": 0.8617,
+      "macro_f1": 0.7695,
+      "macro_mcc": 0.6434,
+      "mean_auprc_lift": 2.018,
+      "min_auprc_lift": 1.359,
+      "median_base_rate": 0.453,
+      "tasks": [
+        "analgesic_opioid",
+        "anti_alzheimer",
+        "anti_inflammatory",
+        "antibacterial",
+        "anticancer",
+        "antidepressant_cns",
+        "antidiabetic",
+        "antifungal",
+        "antihistaminic",
+        "antihypertensive",
+        "antiparkinson",
+        "antiprotozoal",
+        "antithrombotic",
+        "antiviral_hiv"
+      ]
+    },
+    "liability": {
+      "n_tasks_evaluated": 0,
+      "tasks": [
+        "cyp1a2_inhibition",
+        "cyp2c19_inhibition",
+        "cyp2c9_inhibition",
+        "cyp2d6_inhibition",
+        "cyp3a4_inhibition",
+        "herg_liability",
+        "pgp_efflux"
+      ]
+    }
+  },
+  "per_task": [
+    {
+      "task": "anticancer",
+      "n": 1687,
+      "n_positive": 884,
+      "positive_rate": 0.524,
+      "auroc": 0.855,
+      "auprc": 0.8584,
+      "auprc_lift": 1.638,
+      "f1": 0.7011,
+      "precision": 0.8776,
+      "recall": 0.5837,
+      "balanced_accuracy": 0.747,
+      "mcc": 0.5178,
+      "internal_auroc": 0.9181,
+      "internal_auprc": 0.9159,
+      "delta_auprc": -0.0575
+    },
+    {
+      "task": "anti_inflammatory",
+      "n": 357,
+      "n_positive": 106,
+      "positive_rate": 0.2969,
+      "auroc": 0.803,
+      "auprc": 0.7221,
+      "auprc_lift": 2.432,
+      "f1": 0.6022,
+      "precision": 0.7,
+      "recall": 0.5283,
+      "balanced_accuracy": 0.7163,
+      "mcc": 0.4741,
+      "internal_auroc": 0.9134,
+      "internal_auprc": 0.8679,
+      "delta_auprc": -0.1458
+    },
+    {
+      "task": "antidiabetic",
+      "n": 412,
+      "n_positive": 154,
+      "positive_rate": 0.3738,
+      "auroc": 0.9401,
+      "auprc": 0.8995,
+      "auprc_lift": 2.406,
+      "f1": 0.8027,
+      "precision": 0.8429,
+      "recall": 0.7662,
+      "balanced_accuracy": 0.8405,
+      "mcc": 0.6956,
+      "internal_auroc": 0.9383,
+      "internal_auprc": 0.9304,
+      "delta_auprc": -0.0309
+    },
+    {
+      "task": "antihypertensive",
+      "n": 55,
+      "n_positive": 29,
+      "positive_rate": 0.5273,
+      "auroc": 0.9562,
+      "auprc": 0.9643,
+      "auprc_lift": 1.829,
+      "f1": 0.8923,
+      "precision": 0.8056,
+      "recall": 1.0,
+      "balanced_accuracy": 0.8654,
+      "mcc": 0.7673,
+      "internal_auroc": 0.9673,
+      "internal_auprc": 0.9679,
+      "delta_auprc": -0.0036
+    },
+    {
+      "task": "antiviral_hiv",
+      "n": 0,
+      "n_positive": 0,
+      "positive_rate": NaN,
+      "auroc": NaN,
+      "auprc": NaN,
+      "auprc_lift": NaN,
+      "f1": NaN,
+      "precision": NaN,
+      "recall": NaN,
+      "balanced_accuracy": NaN,
+      "mcc": NaN,
+      "internal_auroc": 0.9542,
+      "internal_auprc": 0.9582,
+      "delta_auprc": NaN
+    },
+    {
+      "task": "antidepressant_cns",
+      "n": 318,
+      "n_positive": 131,
+      "positive_rate": 0.4119,
+      "auroc": 0.8419,
+      "auprc": 0.8235,
+      "auprc_lift": 1.999,
+      "f1": 0.708,
+      "precision": 0.8421,
+      "recall": 0.6107,
+      "balanced_accuracy": 0.7652,
+      "mcc": 0.5704,
+      "internal_auroc": 0.9488,
+      "internal_auprc": 0.9382,
+      "delta_auprc": -0.1147
+    },
+    {
+      "task": "analgesic_opioid",
+      "n": 174,
+      "n_positive": 125,
+      "positive_rate": 0.7184,
+      "auroc": 0.9591,
+      "auprc": 0.9764,
+      "auprc_lift": 1.359,
+      "f1": 0.9551,
+      "precision": 0.975,
+      "recall": 0.936,
+      "balanced_accuracy": 0.9374,
+      "mcc": 0.8505,
+      "internal_auroc": 0.939,
+      "internal_auprc": 0.9242,
+      "delta_auprc": 0.0522
+    },
+    {
+      "task": "antihistaminic",
+      "n": 123,
+      "n_positive": 62,
+      "positive_rate": 0.5041,
+      "auroc": 0.9199,
+      "auprc": 0.9041,
+      "auprc_lift": 1.794,
+      "f1": 0.6526,
+      "precision": 0.9394,
+      "recall": 0.5,
+      "balanced_accuracy": 0.7336,
+      "mcc": 0.5272,
+      "internal_auroc": 0.9725,
+      "internal_auprc": 0.9796,
+      "delta_auprc": -0.0755
+    },
+    {
+      "task": "antithrombotic",
+      "n": 504,
+      "n_positive": 249,
+      "positive_rate": 0.494,
+      "auroc": 0.9227,
+      "auprc": 0.8833,
+      "auprc_lift": 1.788,
+      "f1": 0.8667,
+      "precision": 0.8467,
+      "recall": 0.8876,
+      "balanced_accuracy": 0.8653,
+      "mcc": 0.7311,
+      "internal_auroc": 0.9416,
+      "internal_auprc": 0.9282,
+      "delta_auprc": -0.0449
+    },
+    {
+      "task": "anti_alzheimer",
+      "n": 523,
+      "n_positive": 192,
+      "positive_rate": 0.3671,
+      "auroc": 0.8784,
+      "auprc": 0.8541,
+      "auprc_lift": 2.326,
+      "f1": 0.738,
+      "precision": 0.8037,
+      "recall": 0.6823,
+      "balanced_accuracy": 0.7928,
+      "mcc": 0.6094,
+      "internal_auroc": 0.9257,
+      "internal_auprc": 0.9074,
+      "delta_auprc": -0.0533
+    },
+    {
+      "task": "antiparkinson",
+      "n": 447,
+      "n_positive": 153,
+      "positive_rate": 0.3423,
+      "auroc": 0.9319,
+      "auprc": 0.8932,
+      "auprc_lift": 2.609,
+      "f1": 0.7766,
+      "precision": 0.8833,
+      "recall": 0.6928,
+      "balanced_accuracy": 0.8226,
+      "mcc": 0.6908,
+      "internal_auroc": 0.9364,
+      "internal_auprc": 0.9212,
+      "delta_auprc": -0.028
+    },
+    {
+      "task": "antibacterial",
+      "n": 0,
+      "n_positive": 0,
+      "positive_rate": NaN,
+      "auroc": NaN,
+      "auprc": NaN,
+      "auprc_lift": NaN,
+      "f1": NaN,
+      "precision": NaN,
+      "recall": NaN,
+      "balanced_accuracy": NaN,
+      "mcc": NaN,
+      "internal_auroc": 0.8712,
+      "internal_auprc": 0.7712,
+      "delta_auprc": NaN
+    },
+    {
+      "task": "antifungal",
+      "n": 0,
+      "n_positive": 0,
+      "positive_rate": NaN,
+      "auroc": NaN,
+      "auprc": NaN,
+      "auprc_lift": NaN,
+      "f1": NaN,
+      "precision": NaN,
+      "recall": NaN,
+      "balanced_accuracy": NaN,
+      "mcc": NaN,
+      "internal_auroc": 0.8882,
+      "internal_auprc": 0.6924,
+      "delta_auprc": NaN
+    },
+    {
+      "task": "antiprotozoal",
+      "n": 0,
+      "n_positive": 0,
+      "positive_rate": NaN,
+      "auroc": NaN,
+      "auprc": NaN,
+      "auprc_lift": NaN,
+      "f1": NaN,
+      "precision": NaN,
+      "recall": NaN,
+      "balanced_accuracy": NaN,
+      "mcc": NaN,
+      "internal_auroc": 0.892,
+      "internal_auprc": 0.9563,
+      "delta_auprc": NaN
+    },
+    {
+      "task": "herg_liability",
+      "n": 0,
+      "n_positive": 0,
+      "positive_rate": NaN,
+      "auroc": NaN,
+      "auprc": NaN,
+      "auprc_lift": NaN,
+      "f1": NaN,
+      "precision": NaN,
+      "recall": NaN,
+      "balanced_accuracy": NaN,
+      "mcc": NaN,
+      "internal_auroc": 0.8701,
+      "internal_auprc": 0.947,
+      "delta_auprc": NaN
+    },
+    {
+      "task": "cyp3a4_inhibition",
+      "n": 0,
+      "n_positive": 0,
+      "positive_rate": NaN,
+      "auroc": NaN,
+      "auprc": NaN,
+      "auprc_lift": NaN,
+      "f1": NaN,
+      "precision": NaN,
+      "recall": NaN,
+      "balanced_accuracy": NaN,
+      "mcc": NaN,
+      "internal_auroc": 0.8452,
+      "internal_auprc": 0.9595,
+      "delta_auprc": NaN
+    },
+    {
+      "task": "cyp2d6_inhibition",
+      "n": 0,
+      "n_positive": 0,
+      "positive_rate": NaN,
+      "auroc": NaN,
+      "auprc": NaN,
+      "auprc_lift": NaN,
+      "f1": NaN,
+      "precision": NaN,
+      "recall": NaN,
+      "balanced_accuracy": NaN,
+      "mcc": NaN,
+      "internal_auroc": 0.8648,
+      "internal_auprc": 0.9325,
+      "delta_auprc": NaN
+    },
+    {
+      "task": "cyp2c9_inhibition",
+      "n": 0,
+      "n_positive": 0,
+      "positive_rate": NaN,
+      "auroc": NaN,
+      "auprc": NaN,
+      "auprc_lift": NaN,
+      "f1": NaN,
+      "precision": NaN,
+      "recall": NaN,
+      "balanced_accuracy": NaN,
+      "mcc": NaN,
+      "internal_auroc": 0.8383,
+      "internal_auprc": 0.9529,
+      "delta_auprc": NaN
+    },
+    {
+      "task": "cyp1a2_inhibition",
+      "n": 0,
+      "n_positive": 0,
+      "positive_rate": NaN,
+      "auroc": NaN,
+      "auprc": NaN,
+      "auprc_lift": NaN,
+      "f1": NaN,
+      "precision": NaN,
+      "recall": NaN,
+      "balanced_accuracy": NaN,
+      "mcc": NaN,
+      "internal_auroc": 0.8825,
+      "internal_auprc": 0.9704,
+      "delta_auprc": NaN
+    },
+    {
+      "task": "cyp2c19_inhibition",
+      "n": 0,
+      "n_positive": 0,
+      "positive_rate": NaN,
+      "auroc": NaN,
+      "auprc": NaN,
+      "auprc_lift": NaN,
+      "f1": NaN,
+      "precision": NaN,
+      "recall": NaN,
+      "balanced_accuracy": NaN,
+      "mcc": NaN,
+      "internal_auroc": 0.8428,
+      "internal_auprc": 0.9603,
+      "delta_auprc": NaN
+    },
+    {
+      "task": "pgp_efflux",
+      "n": 0,
+      "n_positive": 0,
+      "positive_rate": NaN,
+      "auroc": NaN,
+      "auprc": NaN,
+      "auprc_lift": NaN,
+      "f1": NaN,
+      "precision": NaN,
+      "recall": NaN,
+      "balanced_accuracy": NaN,
+      "mcc": NaN,
+      "internal_auroc": 0.8693,
+      "internal_auprc": 0.975,
+      "delta_auprc": NaN
+    }
+  ]
+}

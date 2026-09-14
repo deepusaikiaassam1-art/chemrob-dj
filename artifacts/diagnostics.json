@@ -1,0 +1,2029 @@
+{
+  "applicability_domain": {
+    "n_scored": 6000,
+    "similarity_distribution": {
+      "mean": 0.6721,
+      "median": 0.6909,
+      "p5": 0.3846,
+      "p25": 0.5556,
+      "p50": 0.6909,
+      "p75": 0.7857,
+      "p95": 0.9538
+    },
+    "by_verdict": [
+      {
+        "n_tasks_evaluated": 21,
+        "n_labels": 6890,
+        "macro_auroc": 0.9091,
+        "macro_auprc": 0.9336,
+        "weighted_auroc": 0.909,
+        "weighted_auprc": 0.9191,
+        "macro_f1": 0.8704,
+        "macro_mcc": 0.636,
+        "mean_auprc_lift": 1.899,
+        "band": "in_domain",
+        "n_molecules": 5617,
+        "mean_max_similarity": 0.6941
+      },
+      {
+        "n_tasks_evaluated": 18,
+        "n_labels": 500,
+        "macro_auroc": 0.7816,
+        "macro_auprc": 0.7248,
+        "weighted_auroc": 0.802,
+        "weighted_auprc": 0.7538,
+        "macro_f1": 0.4466,
+        "macro_mcc": 0.3111,
+        "mean_auprc_lift": 3.246,
+        "band": "borderline",
+        "n_molecules": 370,
+        "mean_max_similarity": 0.3531
+      }
+    ],
+    "by_similarity_band": [
+      {
+        "n_tasks_evaluated": 18,
+        "n_labels": 454,
+        "macro_auroc": 0.7607,
+        "macro_auprc": 0.7182,
+        "weighted_auroc": 0.7927,
+        "weighted_auprc": 0.7572,
+        "macro_f1": 0.451,
+        "macro_mcc": 0.3144,
+        "mean_auprc_lift": 3.137,
+        "band": "0.3-0.4",
+        "n_molecules": 333,
+        "mean_max_similarity": 0.3612
+      },
+      {
+        "n_tasks_evaluated": 20,
+        "n_labels": 997,
+        "macro_auroc": 0.7822,
+        "macro_auprc": 0.7136,
+        "weighted_auroc": 0.7586,
+        "weighted_auprc": 0.7492,
+        "macro_f1": 0.5768,
+        "macro_mcc": 0.3237,
+        "mean_auprc_lift": 3.536,
+        "band": "0.4-0.5",
+        "n_molecules": 660,
+        "mean_max_similarity": 0.4497
+      },
+      {
+        "n_tasks_evaluated": 20,
+        "n_labels": 1147,
+        "macro_auroc": 0.868,
+        "macro_auprc": 0.8117,
+        "weighted_auroc": 0.8448,
+        "weighted_auprc": 0.7843,
+        "macro_f1": 0.7114,
+        "macro_mcc": 0.4932,
+        "mean_auprc_lift": 2.608,
+        "band": "0.5-0.6",
+        "n_molecules": 839,
+        "mean_max_similarity": 0.5497
+      },
+      {
+        "n_tasks_evaluated": 21,
+        "n_labels": 3257,
+        "macro_auroc": 0.9213,
+        "macro_auprc": 0.937,
+        "weighted_auroc": 0.9241,
+        "weighted_auprc": 0.9186,
+        "macro_f1": 0.8717,
+        "macro_mcc": 0.6479,
+        "mean_auprc_lift": 1.885,
+        "band": "0.6-0.8",
+        "n_molecules": 2802,
+        "mean_max_similarity": 0.7051
+      },
+      {
+        "n_tasks_evaluated": 21,
+        "n_labels": 1479,
+        "macro_auroc": 0.9428,
+        "macro_auprc": 0.9669,
+        "weighted_auroc": 0.9526,
+        "weighted_auprc": 0.9665,
+        "macro_f1": 0.9178,
+        "macro_mcc": 0.7482,
+        "mean_auprc_lift": 1.563,
+        "band": "0.8-1.0",
+        "n_molecules": 1316,
+        "mean_max_similarity": 0.8853
+      }
+    ]
+  },
+  "calibration": {
+    "per_task": [
+      {
+        "task": "anticancer",
+        "n": 2913,
+        "base_rate": 0.4868,
+        "brier": 0.1141,
+        "brier_skill_vs_base": 0.5433,
+        "ece": 0.0151,
+        "mean_predicted": 0.4832,
+        "observed_rate": 0.4868
+      },
+      {
+        "task": "anti_inflammatory",
+        "n": 1069,
+        "base_rate": 0.3152,
+        "brier": 0.0995,
+        "brier_skill_vs_base": 0.5389,
+        "ece": 0.0241,
+        "mean_predicted": 0.3182,
+        "observed_rate": 0.3152
+      },
+      {
+        "task": "antidiabetic",
+        "n": 795,
+        "base_rate": 0.473,
+        "brier": 0.0994,
+        "brier_skill_vs_base": 0.6011,
+        "ece": 0.0285,
+        "mean_predicted": 0.4513,
+        "observed_rate": 0.473
+      },
+      {
+        "task": "antihypertensive",
+        "n": 573,
+        "base_rate": 0.5096,
+        "brier": 0.0687,
+        "brier_skill_vs_base": 0.7252,
+        "ece": 0.0294,
+        "mean_predicted": 0.5044,
+        "observed_rate": 0.5096
+      },
+      {
+        "task": "antiviral_hiv",
+        "n": 1067,
+        "base_rate": 0.5539,
+        "brier": 0.0763,
+        "brier_skill_vs_base": 0.6911,
+        "ece": 0.0236,
+        "mean_predicted": 0.54,
+        "observed_rate": 0.5539
+      },
+      {
+        "task": "antidepressant_cns",
+        "n": 1391,
+        "base_rate": 0.4328,
+        "brier": 0.086,
+        "brier_skill_vs_base": 0.6497,
+        "ece": 0.024,
+        "mean_predicted": 0.4398,
+        "observed_rate": 0.4328
+      },
+      {
+        "task": "analgesic_opioid",
+        "n": 1337,
+        "base_rate": 0.4697,
+        "brier": 0.0967,
+        "brier_skill_vs_base": 0.6119,
+        "ece": 0.0206,
+        "mean_predicted": 0.4614,
+        "observed_rate": 0.4697
+      },
+      {
+        "task": "antihistaminic",
+        "n": 794,
+        "base_rate": 0.6008,
+        "brier": 0.0582,
+        "brier_skill_vs_base": 0.7572,
+        "ece": 0.0281,
+        "mean_predicted": 0.5952,
+        "observed_rate": 0.6008
+      },
+      {
+        "task": "antithrombotic",
+        "n": 1112,
+        "base_rate": 0.4245,
+        "brier": 0.092,
+        "brier_skill_vs_base": 0.6235,
+        "ece": 0.0264,
+        "mean_predicted": 0.4268,
+        "observed_rate": 0.4245
+      },
+      {
+        "task": "anti_alzheimer",
+        "n": 1540,
+        "base_rate": 0.4214,
+        "brier": 0.102,
+        "brier_skill_vs_base": 0.5815,
+        "ece": 0.0227,
+        "mean_predicted": 0.4229,
+        "observed_rate": 0.4214
+      },
+      {
+        "task": "antiparkinson",
+        "n": 1875,
+        "base_rate": 0.4176,
+        "brier": 0.0947,
+        "brier_skill_vs_base": 0.6105,
+        "ece": 0.0213,
+        "mean_predicted": 0.4197,
+        "observed_rate": 0.4176
+      },
+      {
+        "task": "antibacterial",
+        "n": 4475,
+        "base_rate": 0.2793,
+        "brier": 0.1167,
+        "brier_skill_vs_base": 0.4203,
+        "ece": 0.0238,
+        "mean_predicted": 0.2664,
+        "observed_rate": 0.2793
+      },
+      {
+        "task": "antifungal",
+        "n": 1403,
+        "base_rate": 0.1418,
+        "brier": 0.0708,
+        "brier_skill_vs_base": 0.4182,
+        "ece": 0.0182,
+        "mean_predicted": 0.1377,
+        "observed_rate": 0.1418
+      },
+      {
+        "task": "antiprotozoal",
+        "n": 3966,
+        "base_rate": 0.7163,
+        "brier": 0.119,
+        "brier_skill_vs_base": 0.4142,
+        "ece": 0.0197,
+        "mean_predicted": 0.7139,
+        "observed_rate": 0.7163
+      },
+      {
+        "task": "herg_liability",
+        "n": 1325,
+        "base_rate": 0.7615,
+        "brier": 0.1112,
+        "brier_skill_vs_base": 0.3876,
+        "ece": 0.0242,
+        "mean_predicted": 0.7483,
+        "observed_rate": 0.7615
+      },
+      {
+        "task": "cyp3a4_inhibition",
+        "n": 1577,
+        "base_rate": 0.837,
+        "brier": 0.0936,
+        "brier_skill_vs_base": 0.3142,
+        "ece": 0.0289,
+        "mean_predicted": 0.8279,
+        "observed_rate": 0.837
+      },
+      {
+        "task": "cyp2d6_inhibition",
+        "n": 902,
+        "base_rate": 0.7239,
+        "brier": 0.1228,
+        "brier_skill_vs_base": 0.3855,
+        "ece": 0.0331,
+        "mean_predicted": 0.7547,
+        "observed_rate": 0.7239
+      },
+      {
+        "task": "cyp2c9_inhibition",
+        "n": 1271,
+        "base_rate": 0.8245,
+        "brier": 0.105,
+        "brier_skill_vs_base": 0.2741,
+        "ece": 0.0183,
+        "mean_predicted": 0.8421,
+        "observed_rate": 0.8245
+      },
+      {
+        "task": "cyp1a2_inhibition",
+        "n": 1068,
+        "base_rate": 0.8399,
+        "brier": 0.0833,
+        "brier_skill_vs_base": 0.3808,
+        "ece": 0.0208,
+        "mean_predicted": 0.8372,
+        "observed_rate": 0.8399
+      },
+      {
+        "task": "cyp2c19_inhibition",
+        "n": 1236,
+        "base_rate": 0.8398,
+        "brier": 0.1027,
+        "brier_skill_vs_base": 0.2369,
+        "ece": 0.0318,
+        "mean_predicted": 0.871,
+        "observed_rate": 0.8398
+      },
+      {
+        "task": "pgp_efflux",
+        "n": 234,
+        "base_rate": 0.8718,
+        "brier": 0.0844,
+        "brier_skill_vs_base": 0.2445,
+        "ece": 0.0473,
+        "mean_predicted": 0.9048,
+        "observed_rate": 0.8718
+      }
+    ],
+    "reliability_curves": {
+      "anticancer": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 771,
+          "mean_predicted": 0.0405,
+          "observed_rate": 0.0506,
+          "gap": 0.0101
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 267,
+          "mean_predicted": 0.144,
+          "observed_rate": 0.1498,
+          "gap": 0.0059
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 178,
+          "mean_predicted": 0.2471,
+          "observed_rate": 0.2753,
+          "gap": 0.0282
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 120,
+          "mean_predicted": 0.3508,
+          "observed_rate": 0.2917,
+          "gap": -0.0592
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 159,
+          "mean_predicted": 0.4486,
+          "observed_rate": 0.4088,
+          "gap": -0.0398
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 132,
+          "mean_predicted": 0.5499,
+          "observed_rate": 0.5833,
+          "gap": 0.0334
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 162,
+          "mean_predicted": 0.6527,
+          "observed_rate": 0.6667,
+          "gap": 0.014
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 207,
+          "mean_predicted": 0.7505,
+          "observed_rate": 0.7343,
+          "gap": -0.0162
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 307,
+          "mean_predicted": 0.8528,
+          "observed_rate": 0.8534,
+          "gap": 0.0006
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 610,
+          "mean_predicted": 0.959,
+          "observed_rate": 0.9689,
+          "gap": 0.0098
+        }
+      ],
+      "anti_inflammatory": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 473,
+          "mean_predicted": 0.0368,
+          "observed_rate": 0.0486,
+          "gap": 0.0118
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 137,
+          "mean_predicted": 0.1459,
+          "observed_rate": 0.1314,
+          "gap": -0.0145
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 50,
+          "mean_predicted": 0.2395,
+          "observed_rate": 0.22,
+          "gap": -0.0195
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 63,
+          "mean_predicted": 0.3481,
+          "observed_rate": 0.2857,
+          "gap": -0.0624
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 41,
+          "mean_predicted": 0.4433,
+          "observed_rate": 0.3902,
+          "gap": -0.0531
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 27,
+          "mean_predicted": 0.551,
+          "observed_rate": 0.5556,
+          "gap": 0.0046
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 40,
+          "mean_predicted": 0.6607,
+          "observed_rate": 0.525,
+          "gap": -0.1357
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 51,
+          "mean_predicted": 0.7507,
+          "observed_rate": 0.7843,
+          "gap": 0.0336
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 67,
+          "mean_predicted": 0.8539,
+          "observed_rate": 0.8955,
+          "gap": 0.0416
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 120,
+          "mean_predicted": 0.9494,
+          "observed_rate": 0.9583,
+          "gap": 0.0089
+        }
+      ],
+      "antidiabetic": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 284,
+          "mean_predicted": 0.0321,
+          "observed_rate": 0.0528,
+          "gap": 0.0207
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 56,
+          "mean_predicted": 0.1526,
+          "observed_rate": 0.1429,
+          "gap": -0.0098
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 35,
+          "mean_predicted": 0.2469,
+          "observed_rate": 0.2857,
+          "gap": 0.0388
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 30,
+          "mean_predicted": 0.3556,
+          "observed_rate": 0.4333,
+          "gap": 0.0777
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 24,
+          "mean_predicted": 0.4476,
+          "observed_rate": 0.5833,
+          "gap": 0.1358
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 34,
+          "mean_predicted": 0.5528,
+          "observed_rate": 0.6765,
+          "gap": 0.1236
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 36,
+          "mean_predicted": 0.6425,
+          "observed_rate": 0.6389,
+          "gap": -0.0036
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 42,
+          "mean_predicted": 0.7547,
+          "observed_rate": 0.7143,
+          "gap": -0.0404
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 63,
+          "mean_predicted": 0.8588,
+          "observed_rate": 0.9048,
+          "gap": 0.046
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 191,
+          "mean_predicted": 0.96,
+          "observed_rate": 0.9581,
+          "gap": -0.0019
+        }
+      ],
+      "antihypertensive": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 218,
+          "mean_predicted": 0.0183,
+          "observed_rate": 0.0275,
+          "gap": 0.0092
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 21,
+          "mean_predicted": 0.1531,
+          "observed_rate": 0.2381,
+          "gap": 0.085
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 18,
+          "mean_predicted": 0.2451,
+          "observed_rate": 0.2778,
+          "gap": 0.0327
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 11,
+          "mean_predicted": 0.3347,
+          "observed_rate": 0.4545,
+          "gap": 0.1199
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 7,
+          "mean_predicted": 0.4575,
+          "observed_rate": 0.4286,
+          "gap": -0.0289
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 14,
+          "mean_predicted": 0.5466,
+          "observed_rate": 0.4286,
+          "gap": -0.1181
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 14,
+          "mean_predicted": 0.6567,
+          "observed_rate": 0.7143,
+          "gap": 0.0576
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 16,
+          "mean_predicted": 0.7468,
+          "observed_rate": 0.5625,
+          "gap": -0.1843
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 39,
+          "mean_predicted": 0.8615,
+          "observed_rate": 0.9487,
+          "gap": 0.0872
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 215,
+          "mean_predicted": 0.9681,
+          "observed_rate": 0.9581,
+          "gap": -0.01
+        }
+      ],
+      "antiviral_hiv": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 325,
+          "mean_predicted": 0.0357,
+          "observed_rate": 0.0462,
+          "gap": 0.0105
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 66,
+          "mean_predicted": 0.1405,
+          "observed_rate": 0.1818,
+          "gap": 0.0413
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 39,
+          "mean_predicted": 0.2442,
+          "observed_rate": 0.2308,
+          "gap": -0.0135
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 33,
+          "mean_predicted": 0.342,
+          "observed_rate": 0.3333,
+          "gap": -0.0087
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 30,
+          "mean_predicted": 0.4434,
+          "observed_rate": 0.4333,
+          "gap": -0.0101
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 15,
+          "mean_predicted": 0.548,
+          "observed_rate": 0.4,
+          "gap": -0.148
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 28,
+          "mean_predicted": 0.6501,
+          "observed_rate": 0.8571,
+          "gap": 0.207
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 34,
+          "mean_predicted": 0.7572,
+          "observed_rate": 0.7647,
+          "gap": 0.0075
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 89,
+          "mean_predicted": 0.856,
+          "observed_rate": 0.9438,
+          "gap": 0.0878
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 408,
+          "mean_predicted": 0.9628,
+          "observed_rate": 0.9583,
+          "gap": -0.0045
+        }
+      ],
+      "antidepressant_cns": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 525,
+          "mean_predicted": 0.0239,
+          "observed_rate": 0.0229,
+          "gap": -0.001
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 99,
+          "mean_predicted": 0.1409,
+          "observed_rate": 0.1414,
+          "gap": 0.0005
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 63,
+          "mean_predicted": 0.257,
+          "observed_rate": 0.3175,
+          "gap": 0.0605
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 54,
+          "mean_predicted": 0.3518,
+          "observed_rate": 0.3148,
+          "gap": -0.0369
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 47,
+          "mean_predicted": 0.449,
+          "observed_rate": 0.5745,
+          "gap": 0.1254
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 46,
+          "mean_predicted": 0.5466,
+          "observed_rate": 0.3261,
+          "gap": -0.2205
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 44,
+          "mean_predicted": 0.6505,
+          "observed_rate": 0.5455,
+          "gap": -0.1051
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 50,
+          "mean_predicted": 0.7543,
+          "observed_rate": 0.74,
+          "gap": -0.0143
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 96,
+          "mean_predicted": 0.8534,
+          "observed_rate": 0.875,
+          "gap": 0.0216
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 367,
+          "mean_predicted": 0.9688,
+          "observed_rate": 0.9591,
+          "gap": -0.0097
+        }
+      ],
+      "analgesic_opioid": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 463,
+          "mean_predicted": 0.0296,
+          "observed_rate": 0.0259,
+          "gap": -0.0037
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 96,
+          "mean_predicted": 0.1397,
+          "observed_rate": 0.1979,
+          "gap": 0.0582
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 54,
+          "mean_predicted": 0.2489,
+          "observed_rate": 0.2593,
+          "gap": 0.0103
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 56,
+          "mean_predicted": 0.3426,
+          "observed_rate": 0.3571,
+          "gap": 0.0146
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 38,
+          "mean_predicted": 0.45,
+          "observed_rate": 0.6316,
+          "gap": 0.1816
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 49,
+          "mean_predicted": 0.5515,
+          "observed_rate": 0.5918,
+          "gap": 0.0404
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 50,
+          "mean_predicted": 0.6472,
+          "observed_rate": 0.62,
+          "gap": -0.0272
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 80,
+          "mean_predicted": 0.7539,
+          "observed_rate": 0.775,
+          "gap": 0.0211
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 104,
+          "mean_predicted": 0.8486,
+          "observed_rate": 0.8654,
+          "gap": 0.0168
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 347,
+          "mean_predicted": 0.9572,
+          "observed_rate": 0.9424,
+          "gap": -0.0148
+        }
+      ],
+      "antihistaminic": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 205,
+          "mean_predicted": 0.0386,
+          "observed_rate": 0.0195,
+          "gap": -0.0191
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 43,
+          "mean_predicted": 0.1429,
+          "observed_rate": 0.0698,
+          "gap": -0.0731
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 33,
+          "mean_predicted": 0.2466,
+          "observed_rate": 0.2121,
+          "gap": -0.0344
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 20,
+          "mean_predicted": 0.3528,
+          "observed_rate": 0.5,
+          "gap": 0.1472
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 14,
+          "mean_predicted": 0.45,
+          "observed_rate": 0.4286,
+          "gap": -0.0214
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 16,
+          "mean_predicted": 0.5559,
+          "observed_rate": 0.5625,
+          "gap": 0.0066
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 17,
+          "mean_predicted": 0.6503,
+          "observed_rate": 0.7059,
+          "gap": 0.0556
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 27,
+          "mean_predicted": 0.7571,
+          "observed_rate": 0.7407,
+          "gap": -0.0163
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 63,
+          "mean_predicted": 0.859,
+          "observed_rate": 0.9365,
+          "gap": 0.0775
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 356,
+          "mean_predicted": 0.9621,
+          "observed_rate": 0.9747,
+          "gap": 0.0126
+        }
+      ],
+      "antithrombotic": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 441,
+          "mean_predicted": 0.027,
+          "observed_rate": 0.0385,
+          "gap": 0.0116
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 74,
+          "mean_predicted": 0.1415,
+          "observed_rate": 0.1351,
+          "gap": -0.0063
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 39,
+          "mean_predicted": 0.2452,
+          "observed_rate": 0.1282,
+          "gap": -0.117
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 30,
+          "mean_predicted": 0.3552,
+          "observed_rate": 0.5333,
+          "gap": 0.1781
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 43,
+          "mean_predicted": 0.4482,
+          "observed_rate": 0.3721,
+          "gap": -0.0761
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 39,
+          "mean_predicted": 0.549,
+          "observed_rate": 0.5641,
+          "gap": 0.0151
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 38,
+          "mean_predicted": 0.6562,
+          "observed_rate": 0.5789,
+          "gap": -0.0773
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 62,
+          "mean_predicted": 0.7582,
+          "observed_rate": 0.7097,
+          "gap": -0.0485
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 112,
+          "mean_predicted": 0.8547,
+          "observed_rate": 0.8393,
+          "gap": -0.0154
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 234,
+          "mean_predicted": 0.9558,
+          "observed_rate": 0.9658,
+          "gap": 0.01
+        }
+      ],
+      "anti_alzheimer": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 488,
+          "mean_predicted": 0.0451,
+          "observed_rate": 0.0471,
+          "gap": 0.002
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 184,
+          "mean_predicted": 0.1458,
+          "observed_rate": 0.125,
+          "gap": -0.0208
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 101,
+          "mean_predicted": 0.2504,
+          "observed_rate": 0.2376,
+          "gap": -0.0128
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 73,
+          "mean_predicted": 0.3513,
+          "observed_rate": 0.2055,
+          "gap": -0.1458
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 64,
+          "mean_predicted": 0.4512,
+          "observed_rate": 0.4375,
+          "gap": -0.0137
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 60,
+          "mean_predicted": 0.5429,
+          "observed_rate": 0.5667,
+          "gap": 0.0237
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 63,
+          "mean_predicted": 0.6506,
+          "observed_rate": 0.619,
+          "gap": -0.0316
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 102,
+          "mean_predicted": 0.7525,
+          "observed_rate": 0.7941,
+          "gap": 0.0416
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 135,
+          "mean_predicted": 0.8551,
+          "observed_rate": 0.8963,
+          "gap": 0.0412
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 270,
+          "mean_predicted": 0.9512,
+          "observed_rate": 0.9667,
+          "gap": 0.0155
+        }
+      ],
+      "antiparkinson": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 695,
+          "mean_predicted": 0.0318,
+          "observed_rate": 0.0417,
+          "gap": 0.0099
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 167,
+          "mean_predicted": 0.1462,
+          "observed_rate": 0.1617,
+          "gap": 0.0155
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 122,
+          "mean_predicted": 0.2467,
+          "observed_rate": 0.1967,
+          "gap": -0.05
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 82,
+          "mean_predicted": 0.3465,
+          "observed_rate": 0.4146,
+          "gap": 0.0681
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 55,
+          "mean_predicted": 0.4504,
+          "observed_rate": 0.4545,
+          "gap": 0.0041
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 54,
+          "mean_predicted": 0.5487,
+          "observed_rate": 0.4444,
+          "gap": -0.1042
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 79,
+          "mean_predicted": 0.6539,
+          "observed_rate": 0.5823,
+          "gap": -0.0716
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 63,
+          "mean_predicted": 0.7501,
+          "observed_rate": 0.7937,
+          "gap": 0.0436
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 104,
+          "mean_predicted": 0.8503,
+          "observed_rate": 0.8077,
+          "gap": -0.0426
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 454,
+          "mean_predicted": 0.9694,
+          "observed_rate": 0.9692,
+          "gap": -0.0002
+        }
+      ],
+      "antibacterial": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 1966,
+          "mean_predicted": 0.0453,
+          "observed_rate": 0.0605,
+          "gap": 0.0153
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 692,
+          "mean_predicted": 0.1443,
+          "observed_rate": 0.1561,
+          "gap": 0.0117
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 380,
+          "mean_predicted": 0.2444,
+          "observed_rate": 0.2132,
+          "gap": -0.0312
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 252,
+          "mean_predicted": 0.3476,
+          "observed_rate": 0.2976,
+          "gap": -0.05
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 207,
+          "mean_predicted": 0.4493,
+          "observed_rate": 0.4831,
+          "gap": 0.0338
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 186,
+          "mean_predicted": 0.5504,
+          "observed_rate": 0.5968,
+          "gap": 0.0464
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 196,
+          "mean_predicted": 0.647,
+          "observed_rate": 0.6888,
+          "gap": 0.0418
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 209,
+          "mean_predicted": 0.7546,
+          "observed_rate": 0.8086,
+          "gap": 0.054
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 229,
+          "mean_predicted": 0.8547,
+          "observed_rate": 0.8865,
+          "gap": 0.0317
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 158,
+          "mean_predicted": 0.9324,
+          "observed_rate": 0.943,
+          "gap": 0.0106
+        }
+      ],
+      "antifungal": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 997,
+          "mean_predicted": 0.0321,
+          "observed_rate": 0.0341,
+          "gap": 0.002
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 136,
+          "mean_predicted": 0.1372,
+          "observed_rate": 0.1397,
+          "gap": 0.0025
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 68,
+          "mean_predicted": 0.2498,
+          "observed_rate": 0.3235,
+          "gap": 0.0738
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 42,
+          "mean_predicted": 0.3456,
+          "observed_rate": 0.1429,
+          "gap": -0.2028
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 30,
+          "mean_predicted": 0.4451,
+          "observed_rate": 0.5,
+          "gap": 0.0549
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 22,
+          "mean_predicted": 0.5356,
+          "observed_rate": 0.7273,
+          "gap": 0.1917
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 21,
+          "mean_predicted": 0.6549,
+          "observed_rate": 0.7619,
+          "gap": 0.107
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 40,
+          "mean_predicted": 0.7542,
+          "observed_rate": 0.725,
+          "gap": -0.0292
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 25,
+          "mean_predicted": 0.8472,
+          "observed_rate": 0.84,
+          "gap": -0.0072
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 22,
+          "mean_predicted": 0.9461,
+          "observed_rate": 0.9545,
+          "gap": 0.0085
+        }
+      ],
+      "antiprotozoal": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 107,
+          "mean_predicted": 0.0675,
+          "observed_rate": 0.0654,
+          "gap": -0.0021
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 241,
+          "mean_predicted": 0.1515,
+          "observed_rate": 0.2407,
+          "gap": 0.0892
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 247,
+          "mean_predicted": 0.2455,
+          "observed_rate": 0.2753,
+          "gap": 0.0298
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 242,
+          "mean_predicted": 0.3477,
+          "observed_rate": 0.3182,
+          "gap": -0.0295
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 215,
+          "mean_predicted": 0.4457,
+          "observed_rate": 0.4372,
+          "gap": -0.0085
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 209,
+          "mean_predicted": 0.5475,
+          "observed_rate": 0.5407,
+          "gap": -0.0068
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 221,
+          "mean_predicted": 0.6472,
+          "observed_rate": 0.6063,
+          "gap": -0.0409
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 270,
+          "mean_predicted": 0.7538,
+          "observed_rate": 0.7667,
+          "gap": 0.0129
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 450,
+          "mean_predicted": 0.8544,
+          "observed_rate": 0.8222,
+          "gap": -0.0322
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 1764,
+          "mean_predicted": 0.9645,
+          "observed_rate": 0.9711,
+          "gap": 0.0066
+        }
+      ],
+      "herg_liability": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 29,
+          "mean_predicted": 0.0719,
+          "observed_rate": 0.1379,
+          "gap": 0.066
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 61,
+          "mean_predicted": 0.1488,
+          "observed_rate": 0.0984,
+          "gap": -0.0505
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 45,
+          "mean_predicted": 0.2513,
+          "observed_rate": 0.2889,
+          "gap": 0.0376
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 56,
+          "mean_predicted": 0.3434,
+          "observed_rate": 0.3036,
+          "gap": -0.0399
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 53,
+          "mean_predicted": 0.4527,
+          "observed_rate": 0.4151,
+          "gap": -0.0376
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 72,
+          "mean_predicted": 0.5502,
+          "observed_rate": 0.5556,
+          "gap": 0.0054
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 85,
+          "mean_predicted": 0.6542,
+          "observed_rate": 0.7294,
+          "gap": 0.0752
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 140,
+          "mean_predicted": 0.7539,
+          "observed_rate": 0.7786,
+          "gap": 0.0247
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 236,
+          "mean_predicted": 0.8581,
+          "observed_rate": 0.8941,
+          "gap": 0.036
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 548,
+          "mean_predicted": 0.9536,
+          "observed_rate": 0.958,
+          "gap": 0.0044
+        }
+      ],
+      "cyp3a4_inhibition": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 11,
+          "mean_predicted": 0.077,
+          "observed_rate": 0.0909,
+          "gap": 0.0139
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 26,
+          "mean_predicted": 0.1464,
+          "observed_rate": 0.0769,
+          "gap": -0.0695
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 29,
+          "mean_predicted": 0.2617,
+          "observed_rate": 0.2414,
+          "gap": -0.0204
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 36,
+          "mean_predicted": 0.3457,
+          "observed_rate": 0.3333,
+          "gap": -0.0123
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 63,
+          "mean_predicted": 0.4514,
+          "observed_rate": 0.4444,
+          "gap": -0.007
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 58,
+          "mean_predicted": 0.5527,
+          "observed_rate": 0.569,
+          "gap": 0.0162
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 85,
+          "mean_predicted": 0.6561,
+          "observed_rate": 0.7647,
+          "gap": 0.1086
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 138,
+          "mean_predicted": 0.7579,
+          "observed_rate": 0.7826,
+          "gap": 0.0247
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 258,
+          "mean_predicted": 0.8557,
+          "observed_rate": 0.9186,
+          "gap": 0.0629
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 873,
+          "mean_predicted": 0.9614,
+          "observed_rate": 0.9473,
+          "gap": -0.0141
+        }
+      ],
+      "cyp2d6_inhibition": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 10,
+          "mean_predicted": 0.0759,
+          "observed_rate": 0.0,
+          "gap": -0.0759
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 25,
+          "mean_predicted": 0.1546,
+          "observed_rate": 0.0,
+          "gap": -0.1546
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 37,
+          "mean_predicted": 0.2542,
+          "observed_rate": 0.1622,
+          "gap": -0.092
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 39,
+          "mean_predicted": 0.3472,
+          "observed_rate": 0.1538,
+          "gap": -0.1934
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 62,
+          "mean_predicted": 0.4557,
+          "observed_rate": 0.4194,
+          "gap": -0.0363
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 36,
+          "mean_predicted": 0.5574,
+          "observed_rate": 0.5278,
+          "gap": -0.0296
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 67,
+          "mean_predicted": 0.6541,
+          "observed_rate": 0.5672,
+          "gap": -0.0869
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 96,
+          "mean_predicted": 0.7496,
+          "observed_rate": 0.7604,
+          "gap": 0.0108
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 171,
+          "mean_predicted": 0.856,
+          "observed_rate": 0.848,
+          "gap": -0.0081
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 359,
+          "mean_predicted": 0.9546,
+          "observed_rate": 0.9471,
+          "gap": -0.0075
+        }
+      ],
+      "cyp2c9_inhibition": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 6,
+          "mean_predicted": 0.086,
+          "observed_rate": 0.1667,
+          "gap": 0.0807
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 11,
+          "mean_predicted": 0.166,
+          "observed_rate": 0.0,
+          "gap": -0.166
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 13,
+          "mean_predicted": 0.2505,
+          "observed_rate": 0.0769,
+          "gap": -0.1736
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 25,
+          "mean_predicted": 0.3623,
+          "observed_rate": 0.36,
+          "gap": -0.0023
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 27,
+          "mean_predicted": 0.4678,
+          "observed_rate": 0.3333,
+          "gap": -0.1344
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 47,
+          "mean_predicted": 0.5472,
+          "observed_rate": 0.5319,
+          "gap": -0.0152
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 85,
+          "mean_predicted": 0.6505,
+          "observed_rate": 0.5882,
+          "gap": -0.0623
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 135,
+          "mean_predicted": 0.7543,
+          "observed_rate": 0.7259,
+          "gap": -0.0284
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 227,
+          "mean_predicted": 0.8567,
+          "observed_rate": 0.8458,
+          "gap": -0.0109
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 695,
+          "mean_predicted": 0.9578,
+          "observed_rate": 0.954,
+          "gap": -0.0038
+        }
+      ],
+      "cyp1a2_inhibition": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "n": 1,
+          "mean_predicted": 0.0896,
+          "observed_rate": 0.0,
+          "gap": -0.0896
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 26,
+          "mean_predicted": 0.1509,
+          "observed_rate": 0.1538,
+          "gap": 0.003
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 38,
+          "mean_predicted": 0.2497,
+          "observed_rate": 0.1579,
+          "gap": -0.0918
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 27,
+          "mean_predicted": 0.3476,
+          "observed_rate": 0.2963,
+          "gap": -0.0513
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 35,
+          "mean_predicted": 0.464,
+          "observed_rate": 0.4857,
+          "gap": 0.0217
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 39,
+          "mean_predicted": 0.5626,
+          "observed_rate": 0.641,
+          "gap": 0.0785
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 40,
+          "mean_predicted": 0.6527,
+          "observed_rate": 0.75,
+          "gap": 0.0973
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 61,
+          "mean_predicted": 0.7534,
+          "observed_rate": 0.7869,
+          "gap": 0.0335
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 123,
+          "mean_predicted": 0.8561,
+          "observed_rate": 0.878,
+          "gap": 0.0219
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 678,
+          "mean_predicted": 0.9672,
+          "observed_rate": 0.9602,
+          "gap": -0.007
+        }
+      ],
+      "cyp2c19_inhibition": [
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "n": 3,
+          "mean_predicted": 0.2892,
+          "observed_rate": 0.3333,
+          "gap": 0.0441
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 13,
+          "mean_predicted": 0.3481,
+          "observed_rate": 0.2308,
+          "gap": -0.1173
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 21,
+          "mean_predicted": 0.4562,
+          "observed_rate": 0.0952,
+          "gap": -0.3609
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 44,
+          "mean_predicted": 0.5519,
+          "observed_rate": 0.5,
+          "gap": -0.0519
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 66,
+          "mean_predicted": 0.6549,
+          "observed_rate": 0.4545,
+          "gap": -0.2003
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 105,
+          "mean_predicted": 0.7526,
+          "observed_rate": 0.7048,
+          "gap": -0.0478
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 258,
+          "mean_predicted": 0.8576,
+          "observed_rate": 0.8217,
+          "gap": -0.0359
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 726,
+          "mean_predicted": 0.9556,
+          "observed_rate": 0.9559,
+          "gap": 0.0003
+        }
+      ],
+      "pgp_efflux": [
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "n": 2,
+          "mean_predicted": 0.1546,
+          "observed_rate": 0.0,
+          "gap": -0.1546
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "n": 4,
+          "mean_predicted": 0.3652,
+          "observed_rate": 0.75,
+          "gap": 0.3848
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "n": 8,
+          "mean_predicted": 0.4405,
+          "observed_rate": 0.375,
+          "gap": -0.0655
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "n": 4,
+          "mean_predicted": 0.551,
+          "observed_rate": 0.25,
+          "gap": -0.301
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "n": 5,
+          "mean_predicted": 0.6479,
+          "observed_rate": 0.4,
+          "gap": -0.2479
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "n": 9,
+          "mean_predicted": 0.7618,
+          "observed_rate": 0.7778,
+          "gap": 0.016
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "n": 17,
+          "mean_predicted": 0.8578,
+          "observed_rate": 0.6471,
+          "gap": -0.2108
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "n": 185,
+          "mean_predicted": 0.9705,
+          "observed_rate": 0.9568,
+          "gap": -0.0137
+        }
+      ]
+    },
+    "summary": {
+      "n_tasks": 21,
+      "mean_brier": 0.0951,
+      "mean_ece": 0.0252,
+      "worst_ece_task": "pgp_efflux",
+      "worst_ece": 0.0473
+    }
+  }
+}

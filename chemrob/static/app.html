@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChemRob DJ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#FAFBFC;--surface:#FFF;--sunk:#F1F4F8;--ink:#14171D;--muted:#5B6572;
+  --faint:#8A94A2;--rule:#DDE2E8;--rule2:#C3CBD6;--accent:#1F4FA8;--accent-soft:#E8EFFA;
+  --good:#1E6F4C;--good-soft:#E7F3ED;--warn:#B4361F;--warn-soft:#FBEDE9;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --ground:#0F1216;--surface:#161B21;--sunk:#1C222A;--ink:#E6EAF0;--muted:#9AA5B4;
+  --faint:#6E7988;--rule:#262E38;--rule2:#374252;--accent:#7BA6F0;--accent-soft:#17233A;
+  --good:#5CC292;--good-soft:#132A21;--warn:#F0836A;--warn-soft:#2E1A16;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);line-height:1.55}
+.top{border-bottom:1px solid var(--rule);background:var(--surface)}
+.top .inner{max-width:1240px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:14px}
+.brand{font-family:var(--cond);font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand span{color:var(--accent)}
+.tagline{color:var(--faint);font-size:13px;margin-left:auto}
+.tagline a{color:var(--accent)}
+main{max-width:1240px;margin:0 auto;padding:24px 22px 80px;
+  display:grid;grid-template-columns:400px 1fr;gap:26px;align-items:start}
+@media (max-width:980px){main{grid-template-columns:1fr}}
+
+.panel{background:var(--surface);border:1px solid var(--rule)}
+.panel h2{font-family:var(--cond);font-size:13px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--faint);margin:0;padding:12px 16px;border-bottom:1px solid var(--rule)}
+.panel .body{padding:16px}
+label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin:0 0 5px}
+textarea,input[type=text],select{width:100%;font-family:var(--mono);font-size:13px;
+  padding:9px 11px;border:1px solid var(--rule2);background:var(--ground);color:var(--ink)}
+textarea{min-height:74px;resize:vertical}
+.row{display:flex;gap:9px;margin-top:12px;flex-wrap:wrap}
+button{font-family:var(--sans);font-size:14px;font-weight:500;padding:10px 18px;
+  border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.ghost{background:transparent;color:var(--accent)}
+button:disabled{opacity:.5;cursor:progress}
+button:hover:not(:disabled){opacity:.9}
+.examples{margin-top:14px;font-size:12px;color:var(--faint)}
+.examples button{background:none;border:none;color:var(--accent);padding:2px 0;
+  font-size:12px;font-family:var(--mono);cursor:pointer;text-decoration:underline}
+#sketch{width:100%;height:330px;border:1px solid var(--rule2);background:#fff;margin-bottom:10px}
+.sketch-note{font-size:12px;color:var(--faint);margin:0 0 10px}
+
+.card{background:var(--surface);border:1px solid var(--rule);margin-bottom:18px}
+.card h3{font-family:var(--cond);font-size:14px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--faint);margin:0;padding:11px 16px;border-bottom:1px solid var(--rule)}
+.card .body{padding:16px}
+.bar{display:grid;grid-template-columns:1fr 62px 76px 130px;gap:10px;align-items:center;
+  padding:7px 0;border-bottom:1px solid var(--rule);font-size:13.5px}
+.bar:last-child{border-bottom:none}
+.bar .t{font-weight:500}
+.bar .v{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+.bar .p{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right}
+.track{height:8px;background:var(--sunk);position:relative;overflow:hidden}
+.fill{position:absolute;inset:0 auto 0 0;background:var(--accent)}
+.fill.on{background:var(--good)}
+.pill{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+  text-transform:uppercase;padding:2px 7px;border:1px solid var(--rule2);color:var(--muted)}
+.pill.ok{color:var(--good);border-color:var(--good);background:var(--good-soft)}
+.pill.bad{color:var(--warn);border-color:var(--warn);background:var(--warn-soft)}
+.alert{border:1px solid var(--rule);border-left:3px solid var(--warn);background:var(--warn-soft);
+  padding:12px 14px;margin-bottom:16px;font-size:13.5px}
+.alert b{display:block;margin-bottom:3px}
+.kv{display:flex;flex-wrap:wrap;gap:7px;font-family:var(--mono);font-size:12px}
+.kv span{border:1px solid var(--rule);padding:3px 8px;color:var(--muted)}
+.kv b{color:var(--ink);font-weight:500}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule)}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--faint);font-weight:500}
+td.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:none}
+.depict{text-align:center;padding:8px}
+.depict svg{max-width:100%;height:auto}
+.hint{color:var(--faint);font-size:13px}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid var(--rule2);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+.placeholder{padding:52px 22px;text-align:center;color:var(--faint)}
+.placeholder svg{margin-bottom:14px}
+code{font-family:var(--mono);font-size:12.5px;color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style></head>
+<body>
+
+<div class="top"><div class="inner">
+  <svg width="26" height="29" viewBox="0 0 86 96" aria-hidden="true">
+    <path d="M43 6 L76 25 L76 63 L43 82 L10 63 L10 25 Z" fill="none" stroke="var(--accent)" stroke-width="6"/>
+  </svg>
+  <div class="brand">ChemRob <span>DJ</span></div>
+  <div class="tagline">Pharmacological activity prediction &middot; <a href="/docs">API</a></div>
+</div></div>
+
+<main>
+  <div>
+    <div class="panel">
+      <h2>Structure</h2>
+      <div class="body">
+        <div id="sketchWrap">
+          <div id="sketch"></div>
+          <p class="sketch-note" id="sketchNote">Loading the drawing pad&hellip;</p>
+        </div>
+
+        <label for="smiles">SMILES, InChI or molblock</label>
+        <textarea id="smiles" spellcheck="false"
+          placeholder="CC(=O)Oc1ccccc1C(=O)O">CC(=O)Oc1ccccc1C(=O)O</textarea>
+
+        <label for="disease" style="margin-top:12px">Target disease (optional)</label>
+        <input type="text" id="disease" list="diseaseList" placeholder="e.g. visceral leishmaniasis" autocomplete="off">
+        <datalist id="diseaseList"></datalist>
+
+        <label for="optClass" style="margin-top:12px">Optimize toward</label>
+        <select id="optClass"></select>
+
+        <div class="row">
+          <button id="go">Predict activity</button>
+          <button id="opt" class="ghost">Suggest edits</button>
+        </div>
+
+        <p class="examples">
+          Try:
+          <button data-s="COc1cc2ncnc(Nc3ccc(F)c(Cl)c3)c2cc1OCCCN1CCOCC1">gefitinib</button> &middot;
+          <button data-s="O=C(O)c1cn(C2CC2)c2cc(N3CCNCC3)c(F)cc2c1=O">ciprofloxacin</button> &middot;
+          <button data-s="Cc1ccc(-c2cc(C(F)(F)F)nn2-c2ccc(S(N)(=O)=O)cc2)cc1">celecoxib</button> &middot;
+          <button data-s="CCCCc1nc(Cl)c(CO)n1Cc1ccc(-c2ccccc2-c2nnn[nH]2)cc1">losartan</button>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div id="out">
+    <div class="card"><div class="placeholder">
+      <svg width="54" height="60" viewBox="0 0 86 96" aria-hidden="true">
+        <path d="M43 6 L76 25 L76 63 L43 82 L10 63 L10 25 Z" fill="none" stroke="currentColor" stroke-width="3" opacity=".5"/>
+      </svg>
+      <div>Draw or paste a structure, then choose <b>Predict activity</b>.</div>
+    </div></div>
+  </div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const out = $("#out");
+let jsmeApplet = null;
+
+/* ---------- setup ---------- */
+fetch("/classes").then(r => r.json()).then(cs => {
+  $("#optClass").innerHTML = cs.map(c =>
+    `<option value="${c.key}">${c.label}</option>`).join("");
+}).catch(() => {});
+
+$("#disease").addEventListener("input", e => {
+  const q = e.target.value.trim();
+  if (q.length < 2) return;
+  fetch("/diseases?q=" + encodeURIComponent(q)).then(r => r.json()).then(ds => {
+    $("#diseaseList").innerHTML = (ds || []).map(d =>
+      `<option value="${(d.name || "").replace(/"/g, "&quot;")}">`).join("");
+  }).catch(() => {});
+});
+
+document.querySelectorAll(".examples button").forEach(b =>
+  b.addEventListener("click", () => {
+    $("#smiles").value = b.dataset.s;
+    if (jsmeApplet) { try { jsmeApplet.readGenericMolecularInput(b.dataset.s); } catch (e) {} }
+  }));
+
+/* ---------- optional sketch pad ---------- */
+window.jsmeOnLoad = function () {
+  try {
+    jsmeApplet = new JSApplet.JSME("sketch", "100%", "330px", {
+      options: "oldlook,star",
+      smiles: $("#smiles").value
+    });
+    jsmeApplet.setCallBack("AfterStructureModified", function () {
+      const s = jsmeApplet.smiles();
+      if (s) $("#smiles").value = s;
+    });
+    $("#sketchNote").textContent = "Draw here, or type below — the two stay in sync.";
+  } catch (e) {
+    sketchUnavailable();
+  }
+};
+// Called from both the script onerror handler and the timeout, so it has to be
+// safe to run twice - the second call would otherwise hit an already-removed
+// node and throw, killing the rest of the page's JavaScript with it.
+let sketchDismissed = false;
+function sketchUnavailable() {
+  if (sketchDismissed || jsmeApplet) return;
+  sketchDismissed = true;
+  const el = $("#sketch");
+  if (el) el.remove();
+  const note = $("#sketchNote");
+  if (note) note.innerHTML =
+    "Drawing pad unavailable offline — paste a SMILES below instead.";
+}
+(function loadJSME() {
+  const s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/jsme-editor@1.0.1/jsme.nocache.js";
+  s.onerror = sketchUnavailable;
+  document.head.appendChild(s);
+  setTimeout(() => { if (!jsmeApplet) sketchUnavailable(); }, 6000);
+})();
+
+/* ---------- helpers ---------- */
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g,
+  c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const card = (title, inner) =>
+  `<div class="card"><h3>${title}</h3><div class="body">${inner}</div></div>`;
+
+function busy(msg) {
+  out.innerHTML = `<div class="card"><div class="placeholder">
+    <span class="spinner"></span> &nbsp;${esc(msg)}</div></div>`;
+}
+function fail(msg) {
+  out.innerHTML = `<div class="alert"><b>Could not process that structure</b>${esc(msg)}</div>`;
+}
+
+function bars(rows, key) {
+  return rows.map(r => {
+    const p = r.probability, on = r.call === "active";
+    return `<div class="bar">
+      <div class="t">${esc(r.class_label || r.name)}</div>
+      <div class="v">${p.toFixed(3)}</div>
+      <div class="p">${esc(r.predicted_potency || "")}</div>
+      <div class="track"><div class="fill ${on ? "on" : ""}" style="width:${(p * 100).toFixed(1)}%"></div></div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------- predict ---------- */
+async function predict() {
+  const structure = $("#smiles").value.trim();
+  if (!structure) { fail("Enter a structure first."); return; }
+  $("#go").disabled = true;
+  busy("Scoring the structure…");
+  try {
+    const res = await fetch("/predict", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        structure, disease: $("#disease").value.trim() || null,
+        explain: true, include_svg: true
+      })
+    });
+    if (!res.ok) { fail((await res.json()).detail || res.statusText); return; }
+    render(await res.json());
+  } catch (e) {
+    fail(e.message);
+  } finally {
+    $("#go").disabled = false;
+  }
+}
+
+function render(r) {
+  let h = "";
+
+  (r.warnings || []).forEach(w => {
+    h += `<div class="alert"><b>Read this before the numbers</b>${esc(w)}</div>`;
+  });
+
+  const p = r.properties, ad = r.applicability_domain;
+  const adCls = !ad ? "" : ad.verdict === "in_domain" ? "ok"
+    : ad.verdict === "out_of_domain" ? "bad" : "";
+  h += card("Structure", `
+    <div class="depict">${r.explanation && r.explanation.svg ? r.explanation.svg : ""}</div>
+    <div class="kv" style="margin-top:10px">
+      <span>MW <b>${p.lipinski.mw}</b></span>
+      <span>cLogP <b>${p.lipinski.logp}</b></span>
+      <span>TPSA <b>${p.veber.tpsa}</b></span>
+      <span>QED <b>${p.qed}</b></span>
+      <span>SA <b>${p.sa_score}</b></span>
+      <span>Lipinski <b>${p.lipinski.violations}</b></span>
+      ${ad ? `<span class="pill ${adCls}">${esc(ad.verdict.replace(/_/g, " "))} · T ${ad.max_similarity}</span>` : ""}
+    </div>
+    <p class="hint" style="margin:10px 0 0">
+      <code>${esc(r.input.standardized_smiles)}</code></p>`);
+
+  const acts = r.ranked_for_disease
+    ? r.ranked_for_disease.map(x => ({ ...x, call: x.probability >= 0.5 ? "active" : "" }))
+    : r.activity_predictions;
+  h += card(r.disease_context
+    ? "Activity, ranked for " + esc(r.disease_context.matched.name)
+    : "Predicted pharmacological activity", bars(acts.slice(0, 8)));
+
+  if (r.covalent) {
+    h += card("Covalent chemistry detected",
+      r.covalent.warheads.map(w => `<p style="margin:0 0 8px">
+        <b>${esc(w.name)}</b><br><span class="hint">${esc(w.mechanism)} &nbsp;e.g. ${esc(w.example_drugs)}</span></p>`).join("")
+      + `<p class="hint" style="margin:10px 0 0">${esc(r.covalent.advice)}</p>`);
+  }
+
+  if ((r.target_predictions || []).length) {
+    h += card("Target likelihood", `<table><thead><tr>
+      <th>Target</th><th style="text-align:right">Probability</th><th style="text-align:right">Potency</th>
+      </tr></thead><tbody>` + r.target_predictions.slice(0, 8).map(t =>
+      `<tr><td>${esc(t.name)}</td><td class="n">${t.probability.toFixed(3)}</td>
+       <td class="n">${esc(t.predicted_potency || "—")}</td></tr>`).join("") + "</tbody></table>");
+  }
+
+  const sel = r.selectivity && (r.selectivity.pairs || []).filter(x => x.relevant);
+  if (sel && sel.length) {
+    h += card("Selectivity", `<table><thead><tr>
+      <th>Pair</th><th style="text-align:right">SI (log)</th><th style="text-align:right">Fold</th><th>Verdict</th>
+      </tr></thead><tbody>` + sel.map(s =>
+      `<tr><td>${esc(s.label)}</td><td class="n">${s.selectivity_index_log > 0 ? "+" : ""}${s.selectivity_index_log}</td>
+       <td class="n">${s.fold_selectivity}×</td><td>${esc(s.verdict)}</td></tr>`).join("")
+      + `</tbody></table><p class="hint" style="margin:10px 0 0">${esc(sel[0].rationale)}</p>`);
+  }
+
+  if ((r.scaffold_predictions || []).length) {
+    h += card("Core ring alone predicts",
+      bars(r.scaffold_predictions.slice(0, 5).map(x => ({ ...x, call: "" }))));
+  }
+
+  if (r.explanation && (r.explanation.groups || []).length) {
+    h += card("What drove the call", `<table><thead><tr>
+      <th>Group</th><th style="text-align:right">Contribution</th></tr></thead><tbody>`
+      + r.explanation.groups.slice(0, 7).map(g =>
+        `<tr><td>${esc(g.name)}</td><td class="n">${g.total_contribution > 0 ? "+" : ""}${g.total_contribution.toFixed(4)}</td></tr>`
+      ).join("") + "</tbody></table>");
+  }
+
+  if ((r.functional_groups || []).length) {
+    h += card("Functional groups",
+      `<div class="kv">${r.functional_groups.map(g => `<span>${esc(g.name)}</span>`).join("")}</div>`);
+  }
+
+  out.innerHTML = h;
+  out.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* ---------- optimize ---------- */
+async function optimize() {
+  const structure = $("#smiles").value.trim();
+  if (!structure) { fail("Enter a structure first."); return; }
+  $("#opt").disabled = true;
+  busy("Generating and scoring analogues — this takes a moment…");
+  try {
+    const res = await fetch("/optimize", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        structure, activity_class: $("#optClass").value,
+        n_suggestions: 8, rounds: 1
+      })
+    });
+    if (!res.ok) { fail((await res.json()).detail || res.statusText); return; }
+    const r = await res.json();
+    let h = card(`Suggestions for ${esc(r.objective.class_label)}`,
+      `<p class="hint" style="margin:0 0 12px">Parent scores
+       <b>${r.parent.probability.toFixed(3)}</b>${r.parent.pactivity ? " · pAct " + r.parent.pactivity : ""}.
+       ${r.n_candidates_evaluated} candidates evaluated.</p>` +
+      `<table><thead><tr><th>Edit</th><th style="text-align:right">Predicted</th>
+       <th style="text-align:right">Δ</th><th style="text-align:right">SA</th></tr></thead><tbody>` +
+      r.suggestions.map(s => `<tr>
+        <td><code>${esc(s.smiles)}</code><br><span class="hint">${esc(s.edit)} · ${esc(s.source)}</span></td>
+        <td class="n">${s.predicted_probability.toFixed(3)}</td>
+        <td class="n" style="color:${s.delta_vs_parent >= 0 ? "var(--good)" : "var(--warn)"}">
+          ${s.delta_vs_parent >= 0 ? "+" : ""}${s.delta_vs_parent.toFixed(3)}</td>
+        <td class="n">${s.properties.sa_score}</td></tr>`).join("") +
+      `</tbody></table><p class="hint" style="margin:12px 0 0">${esc(r.note)}</p>`);
+    out.innerHTML = h;
+  } catch (e) {
+    fail(e.message);
+  } finally {
+    $("#opt").disabled = false;
+  }
+}
+
+$("#go").addEventListener("click", predict);
+$("#opt").addEventListener("click", optimize);
+</script>
+</body></html>

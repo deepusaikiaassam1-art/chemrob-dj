@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: "ChemRob DJ: an open multitask bioactivity prediction and lead-optimization pipeline"
+message: "If you use this software or its released evaluation artifacts, please cite it."
+type: software
+authors:
+  - family-names: Saikia
+    given-names: Deepjyoti
+    affiliation: "Institute of Pharmacy, Assam Don Bosco University, Tapesia, Sonapur, Guwahati, Assam, India"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"   # add before release
+repository-code: "https://github.com/USERNAME/chemrob-dj"   # set on first push
+license: MIT
+version: "0.2.0"
+date-released: "2026-09-10"
+keywords:
+  - cheminformatics
+  - QSAR
+  - multitask learning
+  - model validation
+  - scaffold split
+  - temporal validation
+  - applicability domain
+  - matched molecular pairs
+  - ChEMBL
+abstract: >-
+  ChemRob DJ predicts pharmacological activity and safety liabilities from
+  chemical structure across 21 classification heads and 57 individual targets,
+  trained on 255,804 molecules curated from ChEMBL and CO-ADD. It is released
+  alongside a controlled measurement of how much evaluation design, rather than
+  the model, determines reported performance: holding data, features and
+  hyperparameters fixed, the split protocol moves macro AUPRC by 0.2388 while
+  the molecular representation moves it by 0.0655, the estimator by 0.0503 and
+  the labelling scheme by 0.0094. Every evaluation artifact behind those numbers
+  is versioned in artifacts/.

@@ -1,0 +1,235 @@
+{
+  "n_molecules": 255804,
+  "provenance": {
+    "chembl_release": "ChEMBL_37",
+    "chembl_fetched_from": "2026-09-02",
+    "chembl_fetched_to": "2026-09-03",
+    "chembl_cached_targets": 57,
+    "coadd_release": "CO-ADD_DoseResponseData_r03_01-02-2020_CSV.zip",
+    "bindingdb_included": false,
+    "built": "2026-09-06",
+    "max_records_per_target": 60000,
+    "sources": [
+      "CO-ADD",
+      "ChEMBL"
+    ],
+    "n_raw_records": 1030878,
+    "n_curated_molecules": 324098,
+    "versions": {
+      "python": "3.14.2",
+      "rdkit": "2026.03.5",
+      "sklearn": "1.8.0",
+      "numpy": "2.4.6",
+      "pandas": "3.0.3",
+      "scipy": "1.17.1",
+      "joblib": "1.5.3"
+    }
+  },
+  "n_train": 204643,
+  "n_valid": 25580,
+  "n_test": 25581,
+  "split": "Bemis-Murcko scaffold split",
+  "classes": [
+    "anticancer",
+    "anti_inflammatory",
+    "antidiabetic",
+    "antihypertensive",
+    "antiviral_hiv",
+    "antidepressant_cns",
+    "analgesic_opioid",
+    "antihistaminic",
+    "antithrombotic",
+    "anti_alzheimer",
+    "antiparkinson",
+    "antibacterial",
+    "antifungal",
+    "antiprotozoal",
+    "herg_liability",
+    "cyp3a4_inhibition",
+    "cyp2d6_inhibition",
+    "cyp2c9_inhibition",
+    "cyp1a2_inhibition",
+    "cyp2c19_inhibition",
+    "pgp_efflux"
+  ],
+  "targets": [
+    "CHEMBL203",
+    "CHEMBL279",
+    "CHEMBL301",
+    "CHEMBL325",
+    "CHEMBL1862",
+    "CHEMBL221",
+    "CHEMBL230",
+    "CHEMBL215",
+    "CHEMBL260",
+    "CHEMBL284",
+    "CHEMBL235",
+    "CHEMBL1900",
+    "CHEMBL1808",
+    "CHEMBL227",
+    "CHEMBL286",
+    "CHEMBL247",
+    "CHEMBL243",
+    "CHEMBL3471",
+    "CHEMBL228",
+    "CHEMBL222",
+    "CHEMBL238",
+    "CHEMBL1951",
+    "CHEMBL224",
+    "CHEMBL233",
+    "CHEMBL237",
+    "CHEMBL236",
+    "CHEMBL231",
+    "CHEMBL264",
+    "CHEMBL204",
+    "CHEMBL244",
+    "CHEMBL220",
+    "CHEMBL1914",
+    "CHEMBL4822",
+    "CHEMBL2039",
+    "CHEMBL217",
+    "CHEMBL251",
+    "CHEMBL352",
+    "CHEMBL354",
+    "CHEMBL360",
+    "CHEMBL348",
+    "CHEMBL350",
+    "CHEMBL614425",
+    "CHEMBL357",
+    "CHEMBL366",
+    "CHEMBL363",
+    "CHEMBL365",
+    "CHEMBL367",
+    "CHEMBL364",
+    "CHEMBL612849",
+    "CHEMBL368",
+    "CHEMBL240",
+    "CHEMBL340",
+    "CHEMBL289",
+    "CHEMBL3397",
+    "CHEMBL3356",
+    "CHEMBL3622",
+    "CHEMBL4302"
+  ],
+  "label_thresholds": {
+    "anticancer": {
+      "assay_format": "biochemical",
+      "active_pActivity": 7.0,
+      "inactive_pActivity": 6.0
+    },
+    "anti_inflammatory": {
+      "assay_format": "biochemical",
+      "active_pActivity": 7.0,
+      "inactive_pActivity": 6.0
+    },
+    "antidiabetic": {
+      "assay_format": "biochemical",
+      "active_pActivity": 7.0,
+      "inactive_pActivity": 6.0
+    },
+    "antihypertensive": {
+      "assay_format": "biochemical",
+      "active_pActivity": 7.0,
+      "inactive_pActivity": 6.0
+    },
+    "antiviral_hiv": {
+      "assay_format": "biochemical",
+      "active_pActivity": 7.0,
+      "inactive_pActivity": 6.0
+    },
+    "antidepressant_cns": {
+      "assay_format": "biochemical",
+      "active_pActivity": 7.0,
+      "inactive_pActivity": 6.0
+    },
+    "analgesic_opioid": {
+      "assay_format": "biochemical",
+      "active_pActivity": 7.0,
+      "inactive_pActivity": 6.0
+    },
+    "antihistaminic": {
+      "assay_format": "biochemical",
+      "active_pActivity": 7.0,
+      "inactive_pActivity": 6.0
+    },
+    "antithrombotic": {
+      "assay_format": "biochemical",
+      "active_pActivity": 7.0,
+      "inactive_pActivity": 6.0
+    },
+    "anti_alzheimer": {
+      "assay_format": "biochemical",
+      "active_pActivity": 7.0,
+      "inactive_pActivity": 6.0
+    },
+    "antiparkinson": {
+      "assay_format": "biochemical",
+      "active_pActivity": 7.0,
+      "inactive_pActivity": 6.0
+    },
+    "antibacterial": {
+      "assay_format": "phenotypic",
+      "active_pActivity": 5.5,
+      "inactive_pActivity": 4.5
+    },
+    "antifungal": {
+      "assay_format": "phenotypic",
+      "active_pActivity": 5.5,
+      "inactive_pActivity": 4.5
+    },
+    "antiprotozoal": {
+      "assay_format": "phenotypic",
+      "active_pActivity": 6.0,
+      "inactive_pActivity": 5.0
+    },
+    "herg_liability": {
+      "assay_format": "biochemical",
+      "active_pActivity": 5.0,
+      "inactive_pActivity": 4.5
+    },
+    "cyp3a4_inhibition": {
+      "assay_format": "biochemical",
+      "active_pActivity": 5.0,
+      "inactive_pActivity": 4.5
+    },
+    "cyp2d6_inhibition": {
+      "assay_format": "biochemical",
+      "active_pActivity": 5.0,
+      "inactive_pActivity": 4.5
+    },
+    "cyp2c9_inhibition": {
+      "assay_format": "biochemical",
+      "active_pActivity": 5.0,
+      "inactive_pActivity": 4.5
+    },
+    "cyp1a2_inhibition": {
+      "assay_format": "biochemical",
+      "active_pActivity": 5.0,
+      "inactive_pActivity": 4.5
+    },
+    "cyp2c19_inhibition": {
+      "assay_format": "biochemical",
+      "active_pActivity": 5.0,
+      "inactive_pActivity": 4.5
+    },
+    "pgp_efflux": {
+      "assay_format": "biochemical",
+      "active_pActivity": 5.0,
+      "inactive_pActivity": 4.5
+    }
+  },
+  "n_fg_associations": 1495,
+  "n_significant_fg_associations": 262,
+  "n_mmp_rules": 179724,
+  "train_config": {
+    "train_mmp": true,
+    "train_scaffold": true,
+    "train_targets": true,
+    "train_regression": true,
+    "mmp_min_pairs": 3,
+    "scaffold_min_members": 3,
+    "seed": 42
+  },
+  "trained_seconds": 3906.0,
+  "backend": "baseline (HistGradientBoosting on ECFP4 counts + descriptors)"
+}

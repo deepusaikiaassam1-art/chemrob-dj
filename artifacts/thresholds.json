@@ -1,0 +1,23 @@
+{
+  "anticancer": 0.41999999999999993,
+  "anti_inflammatory": 0.41999999999999993,
+  "antidiabetic": 0.3999999999999999,
+  "antihypertensive": 0.5599999999999999,
+  "antiviral_hiv": 0.5599999999999999,
+  "antidepressant_cns": 0.4799999999999999,
+  "analgesic_opioid": 0.49999999999999994,
+  "antihistaminic": 0.5299999999999999,
+  "antithrombotic": 0.36999999999999994,
+  "anti_alzheimer": 0.4099999999999999,
+  "antiparkinson": 0.37999999999999995,
+  "antibacterial": 0.3,
+  "antifungal": 0.31999999999999995,
+  "antiprotozoal": 0.4099999999999999,
+  "herg_liability": 0.36999999999999994,
+  "cyp3a4_inhibition": 0.4499999999999999,
+  "cyp2d6_inhibition": 0.42999999999999994,
+  "cyp2c9_inhibition": 0.3999999999999999,
+  "cyp1a2_inhibition": 0.4499999999999999,
+  "cyp2c19_inhibition": 0.5199999999999999,
+  "pgp_efflux": 0.10999999999999999
+}
