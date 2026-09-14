@@ -1,4 +1,5 @@
 # ChemRob DJ
+<img width="1905" height="523" alt="Screenshot 2026-09-03 220339" src="https://github.com/user-attachments/assets/3a053e52-cefc-4f41-a2a1-9ed7b914a357" />
 
 
 A working implementation of the ChemRob DJ concept: predict the
