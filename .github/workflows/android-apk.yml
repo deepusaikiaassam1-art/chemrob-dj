@@ -34,11 +34,40 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Unit tests and APK
-        run: gradle -p MedAdherenceAndroid --no-daemon testDebugUnitTest assembleDebug
+      # Optional: your own release signing key, stored as repository secrets
+      # (Settings > Secrets and variables > Actions). Without them the release build is signed
+      # with the project's shared test key.
+      #   RELEASE_KEYSTORE_BASE64    the .jks file, base64-encoded
+      #   RELEASE_KEYSTORE_PASSWORD  keystore password
+      #   RELEASE_KEY_ALIAS          key alias (e.g. medadherence)
+      #   RELEASE_KEY_PASSWORD       key password (same as the keystore password for PKCS12)
+      - name: Release signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+            {
+              echo "MEDADHERENCE_KEYSTORE=$RUNNER_TEMP/release.jks"
+              echo "MEDADHERENCE_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "MEDADHERENCE_KEY_ALIAS=$KEY_ALIAS"
+              echo "MEDADHERENCE_KEY_PASSWORD=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+            } >> "$GITHUB_ENV"
+            echo "Signing with your release key."
+          else
+            echo "No release key secrets set: signing with the shared test key."
+          fi
 
-      - name: Name the APK
-        run: cp MedAdherenceAndroid/app/build/outputs/apk/debug/app-debug.apk MedAdherence.apk
+      - name: Unit tests and release APK
+        run: gradle -p MedAdherenceAndroid --no-daemon testDebugUnitTest assembleRelease
+
+      - name: Name and check the APK
+        run: |
+          cp MedAdherenceAndroid/app/build/outputs/apk/release/app-release.apk MedAdherence.apk
+          "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME"/build-tools | sort -V | tail -1)/apksigner verify --print-certs MedAdherence.apk | head -3
 
       - uses: actions/upload-artifact@v4
         with:

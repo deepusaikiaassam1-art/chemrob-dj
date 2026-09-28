@@ -8,9 +8,10 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.CAMERA" />
-    <!-- SOS button: call and text the emergency contact, with the patient's location. -->
+    <!-- SOS button: call the emergency contact and share the patient's location.
+         No SMS permissions on purpose: Play Protect blocks sideloaded apps that request them;
+         the SOS text is sent from the messaging app with one tap instead. -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
-    <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
@@ -57,7 +58,7 @@
             android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
             android:turnScreenOn="true" />
 
-        <!-- SOS countdown, then SMS + direct call + automated voice on the speaker. -->
+        <!-- SOS countdown, then direct call + automated voice on the speaker, then the SMS ready to send. -->
         <activity
             android:name=".ui.EmergencyActivity"
             android:exported="false"
