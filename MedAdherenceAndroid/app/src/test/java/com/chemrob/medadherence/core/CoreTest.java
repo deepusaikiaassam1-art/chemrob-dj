@@ -273,6 +273,7 @@ public class CoreTest {
         m.observed = true;
         m.stock = 3.5;
         m.pause(d(2026, 1, 3));
+        m.photo = "/data/med_photos/m1.jpg";
         AppData data = with(m);
         data.settings.patientName = "Asha";
         DoseRecord rec = ScheduleEngine.record(data, DoseKey.make("m1", t(2026, 1, 1, 8, 0)), DoseStatus.TAKEN, t(2026, 1, 1, 8, 5));
@@ -285,11 +286,60 @@ public class CoreTest {
         assertTrue(b.observed);
         assertEquals(2.5, b.stock, 1e-9); // one dose taken from 3.5
         assertFalse(b.isActive());
+        assertEquals("/data/med_photos/m1.jpg", b.photo);
+        assertEquals("/data/med_photos/m1.jpg", b.copy().photo);
         assertEquals("Asha", back.settings.patientName);
         DoseRecord br = back.records.get(0);
         assertEquals(DoseStatus.TAKEN, br.status);
         assertEquals(Verification.AUTO_VERIFIED, br.verification);
         assertEquals(Arrays.asList("/x/step1.jpg"), br.evidence);
         assertEquals(0, JsonCodec.fromJson("{}").medications.size());
+    }
+
+    // ---------------------------------------------------------------- profile
+
+    @Test public void profileValidationAgeAndRoundTrip() throws Exception {
+        LocalDate today = LocalDate.of(2026, 9, 28);
+        Profile p = new Profile();
+        assertFalse(p.isComplete());
+        assertNotNull(p.validate(today));
+        p.name = "Asha Devi";
+        assertNull(p.validate(today));
+        p.dateOfBirth = "1962-10-01";
+        assertEquals(Integer.valueOf(63), p.age(today));
+        assertEquals("Asha", p.firstName());
+        p.sex = "Female";
+        assertEquals("Asha Devi, 63 y, Female", p.summary(today));
+        p.dateOfBirth = "2030-01-01";
+        assertNotNull(p.validate(today));
+        p.dateOfBirth = "01/02/1960";
+        assertNotNull(p.validate(today));
+        p.dateOfBirth = "1962-10-01";
+        p.phone = "+91 98765 43210";
+        assertNull(p.validate(today));
+        p.phone = "call me";
+        assertNotNull(p.validate(today));
+        p.phone = "";
+        p.allergies = "Penicillin";
+        p.conditions = "Type 2 diabetes";
+
+        AppData d = new AppData();
+        d.profile = p;
+        d.settings.theme = "dark";
+        AppData back = JsonCodec.fromJson(JsonCodec.toJson(d));
+        assertEquals("Asha Devi", back.profile.name);
+        assertEquals("Penicillin", back.profile.allergies);
+        assertEquals("dark", back.settings.theme);
+
+        AdherenceCalculator.Report r = AdherenceCalculator.compute(d, today.atStartOfDay(), today.atTime(12, 0));
+        String text = AdherenceCalculator.toText(d, r);
+        assertTrue(text.contains("Patient: Asha Devi, 63 y, Female"));
+        assertTrue(text.contains("Allergies: Penicillin"));
+    }
+
+    @Test public void legacyPatientNameMigratesToProfile() throws Exception {
+        AppData d = JsonCodec.fromJson("{\"settings\":{\"patientName\":\"Ravi\"}}");
+        assertTrue(d.profile.isComplete());
+        assertEquals("Ravi", d.profile.name);
     }
 }

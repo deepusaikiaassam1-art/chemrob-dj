@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.drawable.Icon;
 import android.media.AudioAttributes;
 import android.media.RingtoneManager;
@@ -17,6 +18,7 @@ import com.chemrob.medadherence.core.ScheduledDose;
 import com.chemrob.medadherence.core.TimeUtil;
 import com.chemrob.medadherence.ui.AlarmActivity;
 import com.chemrob.medadherence.ui.ObserveActivity;
+import com.chemrob.medadherence.ui.Ui;
 
 import java.time.LocalDateTime;
 
@@ -60,10 +62,14 @@ public final class Notifications {
     }
 
     static void postDose(Context ctx, AppData data, ScheduledDose d, LocalDateTime now) {
-        postRinging(ctx, d.key(), title(d), body(data, d, now), d.med.observed);
+        postRinging(ctx, d.key(), title(d), body(data, d, now), d.med.observed, d.med.photo);
     }
 
     static void postRinging(Context ctx, String key, String title, String body, boolean observed) {
+        postRinging(ctx, key, title, body, observed, null);
+    }
+
+    static void postRinging(Context ctx, String key, String title, String body, boolean observed, String photo) {
         ensureChannel(ctx);
         int icon = android.R.drawable.ic_lock_idle_alarm;
         PendingIntent ring = AlarmActivity.pendingIntent(ctx, key);
@@ -71,13 +77,21 @@ public final class Notifications {
                 .setSmallIcon(icon)
                 .setContentTitle(title)
                 .setContentText(body)
-                .setStyle(new Notification.BigTextStyle().bigText(body))
+                .setColor(0xFF4F46E5)
                 .setCategory(Notification.CATEGORY_ALARM)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setAutoCancel(true)
                 .setTimeoutAfter(RING_TIMEOUT_MS)
                 .setContentIntent(ring)
                 .setFullScreenIntent(ring, true);
+        // Show the drug's photo so the patient can recognise the right medicine at a glance.
+        Bitmap pic = Ui.loadBitmap(photo, 720);
+        if (pic != null) {
+            b.setLargeIcon(pic);
+            b.setStyle(new Notification.BigPictureStyle().bigPicture(pic).bigLargeIcon((Icon) null).setSummaryText(body));
+        } else {
+            b.setStyle(new Notification.BigTextStyle().bigText(body));
+        }
         Icon ic = Icon.createWithResource(ctx, icon);
         if (observed) {
             // An activity PendingIntent: Android 12+ forbids starting activities from a receiver here.

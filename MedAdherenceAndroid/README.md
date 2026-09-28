@@ -20,6 +20,25 @@ To install it:
 
 ## What it does
 
+- **Patient profile first.** On first launch the patient creates a profile, and nothing else is
+  available until the name is saved. The profile holds:
+  - name, date of birth and sex
+  - phone number
+  - conditions and allergies
+  - doctor or pharmacy
+  - emergency contact
+
+  It is shown at the top of every adherence report and can be edited from the avatar in the top
+  corner.
+- **Medicine photos.** When adding a medicine, take a photo of the pack or tablet with the phone
+  camera, or pick one from the gallery. At dose time the photo appears in the alarm notification
+  and fills the ringing screen, next to the drug name, dose and instructions, so the patient takes
+  the right tablet.
+- **Modern, easy-to-read design.** Large text and buttons, rounded cards and an icon bottom bar.
+  The Today screen leads with the next or due medicine and a big **I took it** button, followed by
+  a progress ring for the day. There is a light and a dark theme, which follows the phone by
+  default and can be changed under Pharmacist → Settings → Appearance.
+
 - **Rings the phone at dose times.** A full-screen alarm appears over the lock screen and keeps
   sounding until the patient taps **Taken**, **Snooze** or **Skip**. If nobody answers, it rings
   again every 10 minutes, up to 4 times. Alarms are planned 7 days ahead and re-planned every time
@@ -74,7 +93,8 @@ gradle -p MedAdherenceAndroid testDebugUnitTest assembleDebug
 app/src/main/java/com/chemrob/medadherence/
   core/    plain Java: schedule, adherence, regimen parser, stock, camera-frame checks, JSON (unit-tested)
   alarm/   AlarmManager scheduling, alarm receiver, boot receiver, ringing notification
-  ui/      MainActivity (all tabs), AlarmActivity (lock-screen ringing), ObserveActivity (camera)
+  ui/      MainActivity (profile + all tabs), AlarmActivity (lock-screen ringing with drug photo),
+           ObserveActivity (observed-dose camera), PhotoActivity (medicine photo), Ui (theme and widgets)
   Store.java   the JSON data file in app-private storage
 app/src/test/  JUnit tests for core/
 ```

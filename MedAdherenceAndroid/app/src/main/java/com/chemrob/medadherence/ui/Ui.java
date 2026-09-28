@@ -1,37 +1,83 @@
 package com.chemrob.medadherence.ui;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Outline;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-/** Small helpers for building the UI in code (no XML layouts, no support libraries). */
+import com.chemrob.medadherence.R;
+import com.chemrob.medadherence.Store;
+
+import java.io.File;
+
+/**
+ * The app's look, built in code: a light and a dark palette, large readable type, rounded cards
+ * with soft shadows, big buttons, icons and a progress ring. No XML layouts or support libraries.
+ */
 public final class Ui {
     private Ui() {}
 
-    public static final int BG = Color.parseColor("#F2F5F3");
-    public static final int SURFACE = Color.WHITE;
-    public static final int PRIMARY = Color.parseColor("#0E6B5C");
-    public static final int ACCENT = Color.parseColor("#1F8FB3");
-    public static final int GOOD = Color.parseColor("#2F8F4E");
-    public static final int WARN = Color.parseColor("#C9821A");
-    public static final int BAD = Color.parseColor("#C2443A");
-    public static final int MUTED = Color.parseColor("#66756F");
-    public static final int INK = Color.parseColor("#1B2A2F");
-    public static final int LINE = Color.parseColor("#DCE4E0");
-    public static final int DUE_BG = Color.parseColor("#FFF4DE");
-    public static final int ALERT_BG = Color.parseColor("#FDE7E5");
+    public static boolean dark;
+
+    // Palette (set by apply()).
+    public static int BG, SURFACE, SURFACE_VARIANT, PRIMARY, ON_PRIMARY, PRIMARY_CONTAINER, ON_PRIMARY_CONTAINER;
+    public static int INK, MUTED, LINE, GOOD, WARN, BAD, ON_STATUS, DUE_BG, ALERT_BG, GOOD_BG;
+    /** Kept for older call sites: ACCENT is the primary colour, MUTED buttons render as tonal. */
+    public static int ACCENT;
+
+    static { setPalette(false); }
+
+    /** Picks light or dark (patient's choice or the phone's setting). Call before super.onCreate. */
+    public static void apply(Activity a) {
+        String pref = Store.get(a).settings.theme;
+        boolean systemDark = (a.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+        setPalette("dark".equals(pref) || (!"light".equals(pref) && systemDark));
+        a.setTheme(dark ? R.style.AppTheme_Dark : R.style.AppTheme_Light);
+    }
+
+    static void setPalette(boolean isDark) {
+        dark = isDark;
+        if (!isDark) {
+            BG = c("#F4F5FB"); SURFACE = c("#FFFFFF"); SURFACE_VARIANT = c("#ECEEF8");
+            PRIMARY = c("#4F46E5"); ON_PRIMARY = Color.WHITE; PRIMARY_CONTAINER = c("#E3E1FF"); ON_PRIMARY_CONTAINER = c("#1E1A6B");
+            INK = c("#1A1C29"); MUTED = c("#5E6275"); LINE = c("#DCDEEA");
+            GOOD = c("#1E9E63"); WARN = c("#C77C00"); BAD = c("#D93F3F"); ON_STATUS = Color.WHITE;
+            DUE_BG = c("#FFF3D6"); ALERT_BG = c("#FDE5E5"); GOOD_BG = c("#DDF5E8");
+        } else {
+            BG = c("#111320"); SURFACE = c("#1B1E2E"); SURFACE_VARIANT = c("#262A3D");
+            PRIMARY = c("#A5A0FF"); ON_PRIMARY = c("#1E1A6B"); PRIMARY_CONTAINER = c("#3A36A0"); ON_PRIMARY_CONTAINER = c("#E3E1FF");
+            INK = c("#E7E8F2"); MUTED = c("#A3A7BD"); LINE = c("#33374C");
+            GOOD = c("#4CD08E"); WARN = c("#F2B233"); BAD = c("#FF7A7A"); ON_STATUS = c("#111320");
+            DUE_BG = c("#3A2F12"); ALERT_BG = c("#3D1F22"); GOOD_BG = c("#173327");
+        }
+        ACCENT = PRIMARY;
+    }
+
+    private static int c(String hex) { return Color.parseColor(hex); }
 
     public static int dp(Context c, float v) {
         return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, c.getResources().getDisplayMetrics()));
@@ -43,6 +89,13 @@ public final class Ui {
         g.setCornerRadius(dp(c, radiusDp));
         return g;
     }
+
+    private static RippleDrawable pressable(Context c, int color, float radiusDp) {
+        int ripple = dark ? Color.argb(60, 255, 255, 255) : Color.argb(40, 0, 0, 0);
+        return new RippleDrawable(ColorStateList.valueOf(ripple), rounded(c, color, radiusDp), null);
+    }
+
+    public static Typeface medium() { return Typeface.create("sans-serif-medium", Typeface.NORMAL); }
 
     public static LinearLayout.LayoutParams matchWrap(Context c, int topMarginDp) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -63,14 +116,19 @@ public final class Ui {
         return l;
     }
 
-    /** A white rounded card that stacks its children. */
+    private static boolean isRow(ViewGroup p) {
+        return p instanceof LinearLayout && ((LinearLayout) p).getOrientation() == LinearLayout.HORIZONTAL;
+    }
+
+    /** A rounded card with a soft shadow that stacks its children. */
     public static LinearLayout card(ViewGroup parent, int color) {
         Context c = parent.getContext();
         LinearLayout card = vbox(c);
-        card.setBackground(rounded(c, color, 14));
-        int p = dp(c, 16);
+        card.setBackground(rounded(c, color, 22));
+        card.setElevation(dark ? 0 : dp(c, 2));
+        int p = dp(c, 18);
         card.setPadding(p, p, p, p);
-        parent.addView(card, matchWrap(c, 12));
+        parent.addView(card, matchWrap(c, 14));
         return card;
     }
 
@@ -80,46 +138,60 @@ public final class Ui {
         t.setText(s);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(color);
-        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
-        if (parent instanceof LinearLayout && ((LinearLayout) parent).getOrientation() == LinearLayout.HORIZONTAL)
-            parent.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        t.setLineSpacing(0, 1.12f);
+        if (bold) t.setTypeface(medium(), Typeface.BOLD);
+        if (isRow(parent)) parent.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         else parent.addView(t, matchWrap(c, 4));
         return t;
     }
 
-    public static TextView heading(ViewGroup parent, String s) { return text(parent, s, 19, INK, true); }
+    public static TextView heading(ViewGroup parent, String s) { return text(parent, s, 21, INK, true); }
 
-    public static TextView muted(ViewGroup parent, CharSequence s) { return text(parent, s, 14, MUTED, false); }
+    public static TextView muted(ViewGroup parent, CharSequence s) { return text(parent, s, 16, MUTED, false); }
 
+    /** Section label above a group of cards. */
+    public static TextView section(ViewGroup parent, String s) {
+        TextView t = text(parent, s.toUpperCase(java.util.Locale.ROOT), 13, MUTED, true);
+        t.setLetterSpacing(0.08f);
+        ((LinearLayout.LayoutParams) t.getLayoutParams()).topMargin = dp(parent.getContext(), 22);
+        return t;
+    }
+
+    /**
+     * Large rounded button. Filled with {@code color}; MUTED, SURFACE_VARIANT and LINE render as a
+     * quiet "tonal" button with dark text.
+     */
     public static Button button(ViewGroup parent, String label, int color, View.OnClickListener l) {
         Context c = parent.getContext();
         Button b = new Button(c);
         b.setText(label);
         b.setAllCaps(false);
-        b.setTextColor(Color.WHITE);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        b.setTypeface(Typeface.DEFAULT_BOLD);
-        b.setBackground(rounded(c, color, 12));
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        b.setTypeface(medium());
+        boolean tonal = color == MUTED || color == SURFACE_VARIANT || color == LINE;
+        int bg = tonal ? SURFACE_VARIANT : color;
+        int fg = tonal ? INK : color == PRIMARY ? ON_PRIMARY : color == PRIMARY_CONTAINER ? ON_PRIMARY_CONTAINER
+                : color == SURFACE ? PRIMARY : ON_STATUS;
+        b.setTextColor(fg);
+        b.setBackground(pressable(c, bg, 18));
         b.setStateListAnimator(null);
         b.setOnClickListener(l);
-        boolean row = parent instanceof LinearLayout && ((LinearLayout) parent).getOrientation() == LinearLayout.HORIZONTAL;
-        LinearLayout.LayoutParams lp = row
-                ? new LinearLayout.LayoutParams(0, dp(c, 48), 1)
-                : new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(c, 52));
-        if (row) { lp.leftMargin = dp(c, 4); lp.rightMargin = dp(c, 4); }
-        lp.topMargin = dp(c, 8);
+        LinearLayout.LayoutParams lp = isRow(parent)
+                ? new LinearLayout.LayoutParams(0, dp(c, 58), 1)
+                : new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(c, 60));
+        if (isRow(parent)) { lp.leftMargin = dp(c, 5); lp.rightMargin = dp(c, 5); }
+        lp.topMargin = dp(c, 10);
         parent.addView(b, lp);
         return b;
     }
 
-    /** Small selectable pill used for presets. */
+    /** Selectable pill for presets (frequency, duration, period). */
     public static Button chip(ViewGroup row, String label, boolean selected, View.OnClickListener l) {
         Context c = row.getContext();
-        Button b = button(row, label, selected ? PRIMARY : LINE, l);
-        b.setTextColor(selected ? Color.WHITE : INK);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        Button b = button(row, label, selected ? PRIMARY : SURFACE_VARIANT, l);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         b.setPadding(0, 0, 0, 0);
-        b.getLayoutParams().height = dp(c, 40);
+        b.getLayoutParams().height = dp(c, 46);
         return b;
     }
 
@@ -131,18 +203,19 @@ public final class Ui {
 
     public static EditText field(ViewGroup parent, String label, String hint, String value, int inputType) {
         Context c = parent.getContext();
-        TextView l = text(parent, label, 13, MUTED, true);
-        ((LinearLayout.LayoutParams) l.getLayoutParams()).topMargin = dp(c, 12);
+        TextView l = text(parent, label, 14, MUTED, true);
+        ((LinearLayout.LayoutParams) l.getLayoutParams()).topMargin = dp(c, 14);
         EditText e = new EditText(c);
         e.setHint(hint);
         e.setText(value);
         e.setInputType(inputType);
+        e.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         e.setTextColor(INK);
         e.setHintTextColor(MUTED);
-        e.setBackground(rounded(c, BG, 10));
-        int p = dp(c, 12);
+        e.setBackground(rounded(c, SURFACE_VARIANT, 14));
+        int p = dp(c, 14);
         e.setPadding(p, p, p, p);
-        parent.addView(e, matchWrap(c, 4));
+        parent.addView(e, matchWrap(c, 6));
         return e;
     }
 
@@ -154,9 +227,10 @@ public final class Ui {
         CheckBox cb = new CheckBox(parent.getContext());
         cb.setText(label);
         cb.setTextColor(INK);
-        cb.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        cb.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+        cb.setButtonTintList(ColorStateList.valueOf(PRIMARY));
         cb.setChecked(value);
-        parent.addView(cb, matchWrap(parent.getContext(), 8));
+        parent.addView(cb, matchWrap(parent.getContext(), 10));
         return cb;
     }
 
@@ -164,33 +238,143 @@ public final class Ui {
         Context c = parent.getContext();
         TextView t = new TextView(c);
         t.setText(s);
-        t.setTextColor(Color.WHITE);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        t.setTypeface(Typeface.DEFAULT_BOLD);
-        t.setBackground(rounded(c, color, 10));
-        int p = dp(c, 8);
-        t.setPadding(p, dp(c, 4), p, dp(c, 4));
+        t.setTextColor(color == PRIMARY ? ON_PRIMARY : color == MUTED ? SURFACE : ON_STATUS);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        t.setTypeface(medium());
+        t.setBackground(rounded(c, color, 12));
+        int p = dp(c, 10);
+        t.setPadding(p, dp(c, 5), p, dp(c, 5));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.leftMargin = dp(c, 6);
+        lp.leftMargin = dp(c, 8);
         parent.addView(t, lp);
         return t;
     }
 
     public static int colorFor(double percent) { return percent >= 80 ? GOOD : percent >= 50 ? WARN : BAD; }
 
-    /** Labelled horizontal bar, coloured by the 80/50 adherence thresholds. */
+    /** Labelled rounded progress bar, coloured by the 80/50 adherence thresholds. */
     public static void bar(ViewGroup parent, String label, double percent, String suffix) {
         Context c = parent.getContext();
-        text(parent, String.format(java.util.Locale.ROOT, "%s  %.0f%%%s", label, percent, suffix == null ? "" : suffix), 14, INK, false);
+        LinearLayout head = row(parent);
+        ((LinearLayout.LayoutParams) head.getLayoutParams()).topMargin = dp(c, 12);
+        text(head, label + (suffix == null ? "" : suffix), 15, INK, false);
+        TextView pct = new TextView(c);
+        pct.setText(String.format(java.util.Locale.ROOT, "%.0f%%", percent));
+        pct.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        pct.setTypeface(medium(), Typeface.BOLD);
+        pct.setTextColor(colorFor(percent));
+        head.addView(pct);
         FrameLayout track = new FrameLayout(c);
-        track.setBackground(rounded(c, LINE, 5));
-        parent.addView(track, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(c, 10)));
+        track.setBackground(rounded(c, SURFACE_VARIANT, 6));
+        LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(c, 12));
+        tl.topMargin = dp(c, 6);
+        parent.addView(track, tl);
         View fill = new View(c);
-        fill.setBackground(rounded(c, colorFor(percent), 5));
+        fill.setBackground(rounded(c, colorFor(percent), 6));
         track.addView(fill, new FrameLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT));
         track.post(() -> {
             fill.getLayoutParams().width = (int) (track.getWidth() * Math.max(0, Math.min(1, percent / 100)));
             fill.requestLayout();
         });
+    }
+
+    /** Tinted vector icon. */
+    public static ImageView icon(Context c, int res, int tint, int sizeDp) {
+        ImageView iv = new ImageView(c);
+        iv.setImageResource(res);
+        iv.setImageTintList(ColorStateList.valueOf(tint));
+        iv.setLayoutParams(new LinearLayout.LayoutParams(dp(c, sizeDp), dp(c, sizeDp)));
+        return iv;
+    }
+
+    /** Round badge holding an icon, e.g. the pill in front of a dose. */
+    public static FrameLayout iconCircle(Context c, int res, int bg, int tint, int sizeDp) {
+        FrameLayout f = new FrameLayout(c);
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(bg);
+        f.setBackground(g);
+        ImageView iv = icon(c, res, tint, sizeDp / 2);
+        f.addView(iv, new FrameLayout.LayoutParams(dp(c, sizeDp / 2f), dp(c, sizeDp / 2f), Gravity.CENTER));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(c, sizeDp), dp(c, sizeDp));
+        lp.rightMargin = dp(c, 14);
+        f.setLayoutParams(lp);
+        return f;
+    }
+
+    /** The drug's photo cropped to a rounded square, or a pill icon when there is none. */
+    public static View drugImage(Context c, String photoPath, int sizeDp) {
+        Bitmap bmp = loadBitmap(photoPath, dp(c, sizeDp));
+        if (bmp == null) return iconCircle(c, R.drawable.ic_pill, PRIMARY_CONTAINER, ON_PRIMARY_CONTAINER, sizeDp);
+        ImageView iv = new ImageView(c);
+        iv.setImageBitmap(bmp);
+        iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        final float radius = dp(c, 16);
+        iv.setOutlineProvider(new ViewOutlineProvider() {
+            @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), radius); }
+        });
+        iv.setClipToOutline(true);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(c, sizeDp), dp(c, sizeDp));
+        lp.rightMargin = dp(c, 14);
+        iv.setLayoutParams(lp);
+        return iv;
+    }
+
+    /** Decodes a photo scaled down to roughly {@code targetPx} on its short side; null if missing. */
+    public static Bitmap loadBitmap(String path, int targetPx) {
+        if (path == null || path.isEmpty() || !new File(path).exists()) return null;
+        BitmapFactory.Options o = new BitmapFactory.Options();
+        o.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(path, o);
+        int shortSide = Math.min(o.outWidth, o.outHeight), sample = 1;
+        while (shortSide / (sample * 2) >= targetPx) sample *= 2;
+        o = new BitmapFactory.Options();
+        o.inSampleSize = sample;
+        return BitmapFactory.decodeFile(path, o);
+    }
+
+    /** Circular progress ring with a big number in the middle ("3/4"). */
+    public static final class Ring extends View {
+        private final Paint track = new Paint(Paint.ANTI_ALIAS_FLAG), arc = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint big = new Paint(Paint.ANTI_ALIAS_FLAG), small = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF box = new RectF();
+        private float fraction;
+        private String label = "", caption = "";
+
+        public Ring(Context c) {
+            super(c);
+            float stroke = dp(c, 11);
+            track.setStyle(Paint.Style.STROKE);
+            track.setStrokeWidth(stroke);
+            track.setColor(SURFACE_VARIANT);
+            arc.setStyle(Paint.Style.STROKE);
+            arc.setStrokeWidth(stroke);
+            arc.setStrokeCap(Paint.Cap.ROUND);
+            big.setTextAlign(Paint.Align.CENTER);
+            big.setColor(INK);
+            big.setTypeface(Typeface.create(medium(), Typeface.BOLD));
+            big.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 26, c.getResources().getDisplayMetrics()));
+            small.setTextAlign(Paint.Align.CENTER);
+            small.setColor(MUTED);
+            small.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 12, c.getResources().getDisplayMetrics()));
+        }
+
+        public void set(float fraction, String label, String caption, int color) {
+            this.fraction = Math.max(0, Math.min(1, fraction));
+            this.label = label;
+            this.caption = caption;
+            arc.setColor(color);
+            invalidate();
+        }
+
+        @Override protected void onDraw(Canvas cv) {
+            float pad = track.getStrokeWidth() / 2 + 2;
+            box.set(pad, pad, getWidth() - pad, getHeight() - pad);
+            cv.drawArc(box, 0, 360, false, track);
+            if (fraction > 0) cv.drawArc(box, -90, 360 * fraction, false, arc);
+            float cy = getHeight() / 2f;
+            cv.drawText(label, getWidth() / 2f, cy + big.getTextSize() * 0.25f, big);
+            cv.drawText(caption, getWidth() / 2f, cy + big.getTextSize() * 0.25f + small.getTextSize() * 1.5f, small);
+        }
     }
 }

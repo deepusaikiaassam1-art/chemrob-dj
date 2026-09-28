@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app picks Light or Dark at start-up (system setting or the patient's choice in Settings). -->
+    <style name="AppTheme.Light" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">#4F46E5</item>
+        <item name="android:colorPrimaryDark">#4F46E5</item>
+        <item name="android:colorAccent">#4F46E5</item>
+        <item name="android:windowBackground">@color/bg_light</item>
+        <item name="android:statusBarColor">@color/bg_light</item>
+        <item name="android:navigationBarColor">@color/surface_light</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="AppTheme.Dark" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">#A5A0FF</item>
+        <item name="android:colorPrimaryDark">#A5A0FF</item>
+        <item name="android:colorAccent">#A5A0FF</item>
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:statusBarColor">@color/bg_dark</item>
+        <item name="android:navigationBarColor">@color/surface_dark</item>
+    </style>
+
+    <color name="bg_light">#F4F5FB</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="bg_dark">#111320</color>
+    <color name="surface_dark">#1B1E2E</color>
+</resources>

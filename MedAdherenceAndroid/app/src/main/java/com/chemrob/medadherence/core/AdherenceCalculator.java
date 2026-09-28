@@ -96,7 +96,13 @@ public final class AdherenceCalculator {
     /** Plain-text summary for sharing with a pharmacist or doctor. */
     public static String toText(AppData data, Report r) {
         StringBuilder sb = new StringBuilder("Medication adherence report\n");
-        if (!data.settings.patientName.isEmpty()) sb.append("Patient: ").append(data.settings.patientName).append('\n');
+        Profile pr = data.profile;
+        if (pr.isComplete()) {
+            sb.append("Patient: ").append(pr.summary(r.to.toLocalDate())).append('\n');
+            if (!pr.conditions.isEmpty()) sb.append("Conditions: ").append(pr.conditions).append('\n');
+            if (!pr.allergies.isEmpty()) sb.append("Allergies: ").append(pr.allergies).append('\n');
+            if (!pr.doctor.isEmpty()) sb.append("Doctor / pharmacy: ").append(pr.doctor).append('\n');
+        } else if (!data.settings.patientName.isEmpty()) sb.append("Patient: ").append(data.settings.patientName).append('\n');
         sb.append("Period: ").append(TimeUtil.date(r.from.toLocalDate())).append(" to ").append(TimeUtil.minute(r.to)).append("\n\n");
         append(sb, r.overall);
         sb.append("Current streak: ").append(r.currentStreakDays).append(" day(s)\n\n");

@@ -22,7 +22,7 @@ public final class JsonCodec {
                         .put("times", new JSONArray(m.times)).put("startDate", m.startDate)
                         .put("durationDays", m.durationDays).put("everyNDays", m.everyNDays)
                         .put("observed", m.observed).put("pauses", new JSONArray(m.pauses)).put("addedBy", m.addedBy)
-                        .put("stock", m.stock).put("unitsPerDose", m.unitsPerDose).put("refillAlertDays", m.refillAlertDays);
+                        .put("stock", m.stock).put("unitsPerDose", m.unitsPerDose).put("refillAlertDays", m.refillAlertDays).put("photo", m.photo);
                 meds.put(o);
             }
             root.put("medications", meds);
@@ -37,10 +37,15 @@ public final class JsonCodec {
             }
             root.put("records", recs);
             Settings s = d.settings;
+            Profile pr = d.profile;
+            root.put("profile", new JSONObject().put("name", pr.name).put("dateOfBirth", pr.dateOfBirth)
+                    .put("sex", pr.sex).put("phone", pr.phone).put("conditions", pr.conditions)
+                    .put("allergies", pr.allergies).put("doctor", pr.doctor)
+                    .put("emergencyName", pr.emergencyName).put("emergencyPhone", pr.emergencyPhone));
             root.put("settings", new JSONObject().put("graceMinutes", s.graceMinutes)
                     .put("onTimeWindowMinutes", s.onTimeWindowMinutes).put("snoozeMinutes", s.snoozeMinutes)
                     .put("pharmacistPin", s.pharmacistPin).put("lockEditingWithPin", s.lockEditingWithPin)
-                    .put("patientName", s.patientName));
+                    .put("patientName", s.patientName).put("theme", s.theme));
             return root.toString(1);
         } catch (JSONException e) {
             throw new IllegalStateException(e);
@@ -68,6 +73,7 @@ public final class JsonCodec {
             m.stock = o.optDouble("stock", -1);
             m.unitsPerDose = o.optDouble("unitsPerDose", 1);
             m.refillAlertDays = o.optInt("refillAlertDays", 5);
+            m.photo = o.optString("photo", "");
             d.medications.add(m);
         }
         JSONArray recs = root.optJSONArray("records");
@@ -86,6 +92,19 @@ public final class JsonCodec {
             r.note = o.optString("note", "");
             d.records.add(r);
         }
+        JSONObject p = root.optJSONObject("profile");
+        if (p != null) {
+            Profile pr = d.profile;
+            pr.name = p.optString("name", "");
+            pr.dateOfBirth = p.optString("dateOfBirth", "");
+            pr.sex = p.optString("sex", "");
+            pr.phone = p.optString("phone", "");
+            pr.conditions = p.optString("conditions", "");
+            pr.allergies = p.optString("allergies", "");
+            pr.doctor = p.optString("doctor", "");
+            pr.emergencyName = p.optString("emergencyName", "");
+            pr.emergencyPhone = p.optString("emergencyPhone", "");
+        }
         JSONObject s = root.optJSONObject("settings");
         if (s != null) {
             d.settings.graceMinutes = s.optInt("graceMinutes", 120);
@@ -94,7 +113,9 @@ public final class JsonCodec {
             d.settings.pharmacistPin = s.optString("pharmacistPin", "0000");
             d.settings.lockEditingWithPin = s.optBoolean("lockEditingWithPin", false);
             d.settings.patientName = s.optString("patientName", "");
+            d.settings.theme = s.optString("theme", "system");
         }
+        if (!d.profile.isComplete() && !d.settings.patientName.isEmpty()) d.profile.name = d.settings.patientName;
         return d;
     }
 

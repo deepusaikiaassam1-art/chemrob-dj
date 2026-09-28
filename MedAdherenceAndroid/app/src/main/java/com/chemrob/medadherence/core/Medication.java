@@ -22,6 +22,7 @@ public final class Medication {
     public double stock = -1;          // units on hand; -1 = not tracked
     public double unitsPerDose = 1;
     public int refillAlertDays = 5;
+    public String photo = "";          // path of the drug's photo in app storage, "" if none
 
     public LocalDate start() {
         LocalDate d = TimeUtil.parseDate(startDate);
@@ -65,7 +66,7 @@ public final class Medication {
         m.id = id; m.name = name; m.dose = dose; m.instructions = instructions;
         m.times = new ArrayList<>(times); m.startDate = startDate; m.durationDays = durationDays;
         m.everyNDays = everyNDays; m.observed = observed; m.pauses = new ArrayList<>(pauses);
-        m.addedBy = addedBy; m.stock = stock; m.unitsPerDose = unitsPerDose; m.refillAlertDays = refillAlertDays;
+        m.addedBy = addedBy; m.stock = stock; m.unitsPerDose = unitsPerDose; m.refillAlertDays = refillAlertDays; m.photo = photo;
         return m;
     }
 }

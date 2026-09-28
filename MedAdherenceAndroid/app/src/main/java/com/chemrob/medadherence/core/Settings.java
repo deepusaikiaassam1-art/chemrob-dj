@@ -6,5 +6,6 @@ public final class Settings {
     public int snoozeMinutes = 10;
     public String pharmacistPin = "0000";
     public boolean lockEditingWithPin;
-    public String patientName = "";
+    public String patientName = "";      // legacy; the name now lives in Profile
+    public String theme = "system";      // "system", "light" or "dark"
 }

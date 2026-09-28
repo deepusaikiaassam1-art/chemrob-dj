@@ -15,7 +15,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="MedAdherence"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@style/AppTheme.Light">
 
         <activity
             android:name=".ui.MainActivity"
@@ -49,6 +49,13 @@
             android:showWhenLocked="true"
             android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
             android:turnScreenOn="true" />
+
+        <!-- Photographs a medicine for its card and alarm. -->
+        <activity
+            android:name=".ui.PhotoActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
 
         <receiver
             android:name=".alarm.AlarmReceiver"
