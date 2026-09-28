@@ -30,6 +30,10 @@ well they do.
 5. **MedAdherence → Build Android APK** writes `Builds/Android/MedAdherence.apk`. You can also use
    *File → Build And Run* with a phone connected over USB.
 
+Cloud build (no Unity install needed): add the `UNITY_EMAIL`, `UNITY_PASSWORD` and `UNITY_LICENSE`
+repository secrets, then run **Actions → Build APK → Run workflow**. The APK is attached to the run
+as the `MedAdherence-apk` artifact. See the comment at the top of `.github/workflows/build-apk.yml`.
+
 Command-line build:
 
 ```
