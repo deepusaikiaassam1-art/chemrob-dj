@@ -260,5 +260,15 @@ namespace MedAdherence.Tests
             var r270 = FrameAnalysis.RotateClockwise(src, 2, 1, 270, out _, out _);
             Assert.AreEqual(1, r270[0]); // bottom = A
         }
+
+        [Test]
+        public void FlipsVertically()
+        {
+            // 1x2 image: bottom = 1, top = 2
+            var src = new byte[] { 1, 0, 0, 255, 2, 0, 0, 255 };
+            var f = FrameAnalysis.FlipVertical(src, 1, 2);
+            Assert.AreEqual(2, f[0]);
+            Assert.AreEqual(1, f[4]);
+        }
     }
 }

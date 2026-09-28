@@ -17,6 +17,10 @@ public class AlarmReceiver extends BroadcastReceiver {
         if (MedAlarmPlugin.ACTION_FIRE.equals(action)) {
             JSONObject a = MedAlarmPlugin.alarm(ctx, doseKey);
             if (a == null) return; // dose was already taken / cancelled
+            if (a.optBoolean("info", false)) {
+                MedAlarmPlugin.postInfoNotification(ctx, doseKey, a);
+                return;
+            }
             int repeat = intent.getIntExtra(MedAlarmPlugin.EXTRA_REPEAT, 0);
             MedAlarmPlugin.setRinging(ctx, doseKey, true);
             MedAlarmPlugin.postRingingNotification(ctx, doseKey, a);

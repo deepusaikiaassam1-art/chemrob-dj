@@ -240,6 +240,7 @@ namespace MedAdherence
                 int longest = Mathf.Max(cam.width, cam.height);
                 int targetW = Mathf.Max(1, cam.width * SnapshotMaxSide / longest);
                 var bytes = Downsample(cam.GetPixels32(), cam.width, cam.height, targetW, out int w, out int h);
+                if (cam.videoVerticallyMirrored) bytes = FrameAnalysis.FlipVertical(bytes, w, h);
                 bytes = FrameAnalysis.RotateClockwise(bytes, w, h, cam.videoRotationAngle, out w, out h);
                 var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
                 tex.LoadRawTextureData(bytes);

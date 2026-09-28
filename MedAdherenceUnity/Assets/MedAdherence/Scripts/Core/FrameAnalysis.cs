@@ -88,6 +88,15 @@ namespace MedAdherence.Core
             return dst;
         }
 
+        /// <summary>Flips an RGBA image top-to-bottom (for cameras that report videoVerticallyMirrored).</summary>
+        public static byte[] FlipVertical(byte[] src, int w, int h)
+        {
+            var dst = new byte[src.Length];
+            int row = w * 4;
+            for (int y = 0; y < h; y++) Buffer.BlockCopy(src, y * row, dst, (h - 1 - y) * row, row);
+            return dst;
+        }
+
         static int Luma(byte[] p, int o) => (p[o] * 77 + p[o + 1] * 150 + p[o + 2] * 29) >> 8;
     }
 

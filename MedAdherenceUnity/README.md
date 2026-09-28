@@ -37,7 +37,13 @@ Unity -batchmode -quit -projectPath MedAdherenceUnity \
       -executeMethod MedAdherence.EditorTools.BuildAndroid.Build -logFile -
 ```
 
-Unit tests: *Window → General → Test Runner → EditMode → Run All*.
+Unit tests: *Window → General → Test Runner → EditMode → Run All*. The same tests also run
+without Unity, which is what CI does (`.github/workflows/medadherence.yml`, which also compiles the
+Java plugin against Android 34):
+
+```
+dotnet test MedAdherenceUnity/CoreTests~
+```
 
 ## Using the app
 
@@ -106,6 +112,7 @@ Assets/MedAdherence/Scripts/Core/      pure C# (no UnityEngine): models, schedul
 Assets/MedAdherence/Scripts/Runtime/   Unity app: UI built from code, storage, alarm bridge, camera session, tone
 Assets/MedAdherence/Editor/            Android configure/build menu + batch-mode entry point
 Assets/MedAdherence/Tests/EditMode/    NUnit tests for the core logic
+CoreTests~/                            .NET project that runs those tests outside Unity (Unity ignores "~" folders)
 Assets/Plugins/Android/MedAlarm.androidlib/   native Java: AlarmManager scheduling, ringing screen,
                                               notification actions, boot re-scheduling
 ```
@@ -123,7 +130,9 @@ How the alarm pieces fit together:
   taps *Take on camera*, the app launches straight into the observed-dose session.
 - **Reboots.** `BootReceiver` re-arms stored alarms after a reboot, a time change, or an app update.
 
-If the app isn't opened for 14 days, reminders stop. Opening the app at any time extends the window.
+Alarms are set only 14 days ahead, because Unity code can't run in the background to extend them.
+Two days before the window ends, the phone shows a plain "Open MedAdherence to keep your reminders"
+notification. Opening the app at any time sets the next 14 days.
 
 ## Data and privacy
 

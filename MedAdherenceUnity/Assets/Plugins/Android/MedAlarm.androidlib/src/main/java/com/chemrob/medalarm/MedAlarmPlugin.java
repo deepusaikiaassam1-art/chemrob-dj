@@ -41,6 +41,7 @@ public final class MedAlarmPlugin {
     static final String K_LAUNCH = "launch_dose";  // dose the user asked to verify with the camera
 
     static final String CHANNEL_ID = "med_alarm_v1";
+    static final String INFO_CHANNEL_ID = "med_info_v1";
     static final String ACTION_FIRE = "com.chemrob.medalarm.FIRE";
     static final String ACTION_TAKEN = "com.chemrob.medalarm.TAKEN";
     static final String ACTION_SNOOZE = "com.chemrob.medalarm.SNOOZE";
@@ -356,6 +357,32 @@ public final class MedAlarmPlugin {
             launch.putExtra(EXTRA_KEY, doseKey);
             from.startActivity(launch);
         }
+    }
+
+    /**
+     * Plain (non-ringing) notification that opens the app, used for the "open the app to keep
+     * reminders going" notice scheduled near the end of the alarm horizon.
+     */
+    static void postInfoNotification(Context ctx, String key, JSONObject a) {
+        NotificationManager nm = notifications(ctx);
+        if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(INFO_CHANNEL_ID) == null) {
+            nm.createNotificationChannel(new NotificationChannel(INFO_CHANNEL_ID, "Reminder status",
+                    NotificationManager.IMPORTANCE_DEFAULT));
+        }
+        Intent launch = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
+        PendingIntent open = launch == null ? null : PendingIntent.getActivity(ctx, key.hashCode(), launch,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26
+                ? new Notification.Builder(ctx, INFO_CHANNEL_ID)
+                : new Notification.Builder(ctx);
+        String body = a.optString("body", "");
+        b.setSmallIcon(android.R.drawable.ic_popup_reminder)
+                .setContentTitle(a.optString("title", ""))
+                .setContentText(body)
+                .setStyle(new Notification.BigTextStyle().bigText(body))
+                .setAutoCancel(true);
+        if (open != null) b.setContentIntent(open);
+        nm.notify(key, 1, b.build());
     }
 
     /** Posts the insistent (keeps ringing) alarm notification with a full-screen ringing screen. */

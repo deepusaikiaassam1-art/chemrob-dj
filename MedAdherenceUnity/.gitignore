@@ -14,3 +14,8 @@
 *.aab
 .vs/
 .idea/
+
+# .NET test build output (CoreTests~)
+CoreTests~/bin/
+CoreTests~/obj/
+!CoreTests~/CoreTests.csproj

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using MedAdherence.Core;
 using UnityEngine;
 #if UNITY_ANDROID
@@ -18,7 +19,7 @@ namespace MedAdherence
 #pragma warning disable 0649 // filled by JsonUtility
         [Serializable] class NativeEvent { public string key; public string action; public long at; }
         [Serializable] class EventList { public List<NativeEvent> items = new List<NativeEvent>(); }
-        [Serializable] class NativeAlarm { public string key; public long at; public string title; public string body; public bool observed; }
+        [Serializable] class NativeAlarm { public string key; public long at; public string title; public string body; public bool observed; public bool info; }
         [Serializable] class AlarmList { public List<NativeAlarm> items = new List<NativeAlarm>(); }
         [Serializable] class StringList { public List<string> items = new List<string>(); }
 #pragma warning restore 0649
@@ -96,10 +97,24 @@ namespace MedAdherence
                               (string.IsNullOrEmpty(dose.Med.instructions) ? "" : " | " + dose.Med.instructions);
                 batch.items.Add(new NativeAlarm { key = dose.Key, at = ToEpochMs(at), title = title, body = body, observed = dose.Med.observed });
             }
+            // Alarms only exist up to the horizon, and the app cannot extend them without being opened.
+            // Two days before the last one, post a plain notice asking the patient to open the app.
+            if (batch.items.Count > 0)
+            {
+                var notice = horizon.Date.AddDays(-2).AddHours(10);
+                if (notice > now)
+                    batch.items.Add(new NativeAlarm
+                    {
+                        key = DoseKey.Make("REFRESH", notice), at = ToEpochMs(notice), info = true,
+                        title = "Open MedAdherence to keep your reminders",
+                        body = "Medicine alarms are set until " + horizon.ToString("d MMM") +
+                               ". Opening the app sets the next " + data.settings.scheduleHorizonDays + " days.",
+                    });
+            }
 #if UNITY_ANDROID && !UNITY_EDITOR
             Plugin.CallStatic("scheduleAll", Activity, JsonUtility.ToJson(batch));
 #endif
-            return batch.items.Count;
+            return batch.items.Count(a => !a.info);
         }
 
         static long ToEpochMs(DateTime local) =>
