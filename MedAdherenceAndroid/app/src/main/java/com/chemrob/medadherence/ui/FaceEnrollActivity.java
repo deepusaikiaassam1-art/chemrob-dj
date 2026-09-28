@@ -18,11 +18,13 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.chemrob.medadherence.core.FaceMatch;
 import com.chemrob.medadherence.core.FaceSignature;
 import com.chemrob.medadherence.core.FrameObs;
 import com.google.mlkit.vision.face.Face;
@@ -33,23 +35,47 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.chemrob.medadherence.core.I18n.t;
+import static com.chemrob.medadherence.core.I18n.tf;
+
 /**
- * Face scan for the patient profile. On-device face detection guides the patient (one face, looking
- * straight at the camera, eyes open, close enough, enough light) and captures automatically once
- * the face has been steady for a moment. Returns the photo path and the averaged face signature.
+ * Face enrolment for the patient profile, guided like a phone's face unlock: look straight, turn
+ * the head a little to each side, blink, and look straight again. On-device face detection checks
+ * each pose and the recognition model (see {@link FaceRecognizer}) records a face fingerprint from
+ * several angles, so the patient is recognised later even when not facing the camera squarely.
+ * Returns the photo path, the fingerprints and the older geometry signature.
  */
 @SuppressWarnings("deprecation")
 public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callback, Camera.PreviewCallback {
-    public static final String EXTRA_PATH = "path", EXTRA_SIGNATURE = "signature";
+    public static final String EXTRA_PATH = "path", EXTRA_SIGNATURE = "signature", EXTRA_EMBEDDINGS = "embeddings";
     private static final String TAG = "MedAdherence";
-    private static final int REQ_CAMERA = 31, STEADY_FRAMES = 8;
+    private static final int REQ_CAMERA = 31, STEADY_FRAMES = 3;
+    private static final long TURN_TIMEOUT_MS = 20000, BLINK_TIMEOUT_MS = 15000;
+
+    /** Enrolment stages, in order. */
+    private enum Stage {
+        STRAIGHT("Look straight at the camera", 2),
+        TURN_A("Slowly turn your head a little to one side", 1),
+        TURN_B("Now turn a little to the other side", 1),
+        BLINK("Now blink your eyes", 0),
+        FINAL("Look straight at the camera again", 1);
+        final String prompt;
+        final int views; // face fingerprints recorded in this stage
+        Stage(String prompt, int views) { this.prompt = prompt; this.views = views; }
+    }
 
     private Camera camera;
     private int orientation, w, h;
     private SurfaceHolder holder;
-    private TextView hint;
+    private TextView hint, progress;
+    private LinearLayout dots;
     private Vision vision;
-    private final List<double[]> good = new ArrayList<>();
+    private FaceRecognizer recognizer;
+    private final List<double[]> signatures = new ArrayList<>();
+    private final List<float[]> embeddings = new ArrayList<>();
+    private int stage = -1, steady, stageViews, blinkState;
+    private long stageStart, lastViewAt;
+    private double turnSign;
     private boolean done;
 
     public static Intent intent(Context c) { return new Intent(c, FaceEnrollActivity.class); }
@@ -63,6 +89,15 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
         return false;
     }
 
+    /** Unpacks the fingerprints returned in {@link #EXTRA_EMBEDDINGS}. */
+    public static List<float[]> embeddings(Intent data) {
+        List<float[]> out = new ArrayList<>();
+        float[] flat = data == null ? null : data.getFloatArrayExtra(EXTRA_EMBEDDINGS);
+        if (flat == null) return out;
+        for (int i = 0; i + 128 <= flat.length; i += 128) out.add(java.util.Arrays.copyOfRange(flat, i, i + 128));
+        return out;
+    }
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -72,11 +107,22 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
         root.addView(surface, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
 
         LinearLayout top = Ui.vbox(this);
-        top.setBackgroundColor(Color.argb(160, 0, 0, 0));
+        top.setBackgroundColor(Color.argb(170, 0, 0, 0));
         int p = Ui.dp(this, 20);
         top.setPadding(p, Ui.dp(this, 40), p, p);
         Ui.text(top, "Face scan", 26, Color.WHITE, true);
-        Ui.text(top, "Used to check it is you taking observed doses. It stays on this phone.", 15, Color.parseColor("#D0D3FF"), false);
+        Ui.text(top, "Like a phone's face unlock: the app learns your face from a few angles, so it can "
+                + "recognise you during observed doses. It stays on this phone.", 15, Color.parseColor("#D0D3FF"), false);
+        dots = new LinearLayout(this);
+        dots.setPadding(0, Ui.dp(this, 12), 0, Ui.dp(this, 4));
+        for (int i = 0; i < Stage.values().length; i++) {
+            View d = new View(this);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 6), 1);
+            lp.setMargins(0, 0, Ui.dp(this, 6), 0);
+            dots.addView(d, lp);
+        }
+        top.addView(dots);
+        progress = Ui.text(top, "", 14, Color.WHITE, false);
         hint = Ui.text(top, "Starting camera...", 22, Color.WHITE, true);
         root.addView(top, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP));
 
@@ -87,6 +133,7 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
         setContentView(root);
 
         vision = new Vision(false);
+        recognizer = FaceRecognizer.get(this);
         holder = surface.getHolder();
         holder.addCallback(this);
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
@@ -98,7 +145,7 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
         if (req != REQ_CAMERA) return;
         if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
             if (holder.getSurface() != null && holder.getSurface().isValid()) open();
-        } else hint.setText("Camera permission is needed for the face scan.");
+        } else hint.setText(t("Camera permission is needed for the face scan."));
     }
 
     @Override public void surfaceCreated(SurfaceHolder hd) {
@@ -133,21 +180,49 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
             camera.setPreviewDisplay(holder);
             camera.setPreviewCallback(this);
             camera.startPreview();
-            hint.setText("Look straight at the camera");
+            restart(null);
         } catch (Exception e) {
             Log.e(TAG, "Camera failed", e);
-            hint.setText("The camera could not be opened.");
+            hint.setText(t("The camera could not be opened."));
         }
+    }
+
+    /** Starts the scan from the beginning, optionally explaining why. */
+    private void restart(String why) {
+        signatures.clear();
+        embeddings.clear();
+        lastFace = null;
+        stage = -1;
+        if (why != null) Voice.say(this, why);
+        nextStage(why == null);
+    }
+
+    private void nextStage(boolean interrupt) {
+        stage++;
+        steady = 0;
+        stageViews = 0;
+        blinkState = 0;
+        stageStart = System.currentTimeMillis();
+        if (stage >= Stage.values().length) { finishScan(); return; }
+        Stage s = Stage.values()[stage];
+        hint.setText(t(s.prompt));
+        progress.setText(tf("Step %d of %d", stage + 1, Stage.values().length));
+        for (int i = 0; i < dots.getChildCount(); i++)
+            dots.getChildAt(i).setBackground(Ui.rounded(this, i < stage ? Ui.GOOD : i == stage ? Color.WHITE : Color.argb(90, 255, 255, 255), 3));
+        if (interrupt) Voice.say(this, s.prompt);
+        else Voice.then(this, s.prompt);
     }
 
     @Override
     public void onPreviewFrame(byte[] data, Camera cam) {
-        if (done || data == null || vision.busy()) return;
+        if (done || stage < 0 || data == null || vision.busy()) return;
         vision.analyze(data, w, h, orientation, System.currentTimeMillis(), (obs, face) -> onObs(data, obs, face));
     }
 
     private void onObs(byte[] frame, FrameObs o, Face face) {
-        if (done) return;
+        if (done || stage < 0 || stage >= Stage.values().length) return;
+        Stage s = Stage.values()[stage];
+        long elapsed = System.currentTimeMillis() - stageStart;
         // Face box is in upright image space: width is the short camera side.
         int uprightW = orientation % 180 == 0 ? w : h;
         String problem = null;
@@ -155,34 +230,100 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
         else if (o.faces == 0 || face == null) problem = "Put your face in the frame";
         else if (o.faces > 1) problem = "Only one person, please";
         else if (face.getBoundingBox().width() < uprightW * 0.35) problem = "Move the phone closer";
-        else if (Math.abs(o.yaw) > 12 || Math.abs(o.pitch) > 12) problem = "Look straight at the camera";
-        else if (!Double.isNaN(o.eyesOpen) && o.eyesOpen < 0.6) problem = "Keep your eyes open";
-        else if (o.signature == null) problem = "Hold still";
-
         if (problem != null) {
-            good.clear();
-            hint.setText(problem);
+            steady = 0;
+            hint.setText(t(problem));
             return;
         }
-        good.add(o.signature);
-        hint.setText("Hold still... " + Math.max(0, STEADY_FRAMES - good.size()));
-        if (good.size() >= STEADY_FRAMES) finishScan(frame, face.getBoundingBox());
+
+        boolean poseOk;
+        switch (s) {
+            case STRAIGHT:
+            case FINAL:
+                poseOk = Math.abs(o.yaw) <= 10 && Math.abs(o.pitch) <= 12 && (Double.isNaN(o.eyesOpen) || o.eyesOpen >= 0.6);
+                if (!poseOk) hint.setText(t(Math.abs(o.yaw) > 10 || Math.abs(o.pitch) > 12 ? "Look straight at the camera" : "Keep your eyes open"));
+                break;
+            case TURN_A:
+                poseOk = Math.abs(o.yaw) >= 15 && Math.abs(o.yaw) <= 40;
+                if (poseOk) turnSign = Math.signum(o.yaw);
+                else hint.setText(t(Math.abs(o.yaw) > 40 ? "Not so far - turn back a little" : s.prompt));
+                break;
+            case TURN_B:
+                poseOk = Math.signum(o.yaw) == -turnSign && Math.abs(o.yaw) >= 15 && Math.abs(o.yaw) <= 40;
+                if (!poseOk) hint.setText(t(Math.abs(o.yaw) > 40 ? "Not so far - turn back a little" : s.prompt));
+                break;
+            default: // BLINK: eyes seen open, then closed, then open again
+                if (!Double.isNaN(o.eyesOpen)) {
+                    if (blinkState == 0 && o.eyesOpen > 0.6) blinkState = 1;
+                    else if (blinkState == 1 && o.eyesOpen < 0.3) blinkState = 2;
+                    else if (blinkState == 2 && o.eyesOpen > 0.6) blinkState = 3;
+                }
+                if (blinkState == 3) { Voice.say(this, "Good."); nextStage(false); }
+                else if (elapsed > BLINK_TIMEOUT_MS) nextStage(false); // liveness is re-checked at every dose
+                return;
+        }
+        if (!poseOk) {
+            steady = 0;
+            if ((s == Stage.TURN_A || s == Stage.TURN_B) && elapsed > TURN_TIMEOUT_MS) nextStage(false);
+            return;
+        }
+        if (++steady < STEADY_FRAMES) { hint.setText(t("Hold still...")); return; }
+        if (s == Stage.STRAIGHT || s == Stage.FINAL) {
+            if (o.signature != null) signatures.add(o.signature);
+            if (s == Stage.FINAL) lastFace = new Object[]{frame, face.getBoundingBox()};
+        }
+        capture(frame, face, s);
     }
 
-    private void finishScan(byte[] frame, Rect faceBox) {
-        done = true;
-        double[] sig = FaceSignature.average(good);
-        String path = savePortrait(frame, faceBox);
-        release();
-        if (sig == null || path == null) {
-            hint.setText("Could not save the scan. Please try again.");
-            done = false;
-            good.clear();
+    private Object[] lastFace; // frame and face box for the profile photo
+
+    /** Records one face fingerprint for this stage (spaced out, so each view differs a little). */
+    private void capture(byte[] frame, Face face, Stage s) {
+        if (recognizer == null) { // no recognition model on this phone: geometry signature only
+            if (++stageViews >= s.views) { Voice.say(this, "Good."); nextStage(false); }
             return;
         }
-        hint.setText("Face saved");
-        setResult(RESULT_OK, new Intent().putExtra(EXTRA_PATH, path).putExtra(EXTRA_SIGNATURE, sig));
-        getWindow().getDecorView().postDelayed(this::finish, 700);
+        if (recognizer.busy() || System.currentTimeMillis() - lastViewAt < 350) return;
+        double[] pts = Vision.alignPoints(face);
+        if (pts == null) return;
+        lastViewAt = System.currentTimeMillis();
+        final int at = stage;
+        recognizer.embedAsync(frame, w, h, orientation, pts, e -> {
+            if (done || at != stage || e == null) return;
+            // Every view must look like the first one: a second person during the scan restarts it.
+            if (!embeddings.isEmpty() && FaceMatch.best(embeddings, e) < FaceMatch.MIN_ENROL_CONSISTENCY) {
+                restart("That did not look like the same face. Let's start again. Only you in the picture, please.");
+                return;
+            }
+            embeddings.add(e);
+            if (++stageViews >= s.views) { Voice.say(this, "Good."); nextStage(false); }
+        });
+    }
+
+    private void finishScan() {
+        done = true;
+        double[] sig = FaceSignature.average(signatures);
+        String path = lastFace == null ? null : savePortrait((byte[]) lastFace[0], (Rect) lastFace[1]);
+        double quality = FaceMatch.consistency(embeddings);
+        if (path == null || (recognizer != null && (embeddings.size() < 3 || quality < FaceMatch.MIN_ENROL_CONSISTENCY))) {
+            done = false;
+            lastFace = null;
+            restart("The scan was not clear enough. Let's try again, in good light.");
+            return;
+        }
+        release();
+        hint.setText(recognizer != null ? tf("Face learned from %d views", embeddings.size()) : t("Face saved"));
+        progress.setText(t(""));
+        Voice.say(this, "Your face is saved. Thank you.");
+        Intent result = new Intent().putExtra(EXTRA_PATH, path);
+        if (sig != null) result.putExtra(EXTRA_SIGNATURE, sig);
+        if (!embeddings.isEmpty()) {
+            float[] flat = new float[embeddings.size() * 128];
+            for (int i = 0; i < embeddings.size(); i++) System.arraycopy(embeddings.get(i), 0, flat, i * 128, 128);
+            result.putExtra(EXTRA_EMBEDDINGS, flat);
+        }
+        setResult(RESULT_OK, result);
+        getWindow().getDecorView().postDelayed(this::finish, 900);
     }
 
     /** Upright, cropped head-and-shoulders photo for the profile and the pharmacist's review. */

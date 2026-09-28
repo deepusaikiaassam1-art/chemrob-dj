@@ -16,6 +16,7 @@ public final class FrameObs {
     public boolean handVisible;       // a wrist or finger is confidently in the frame
     public double brightness = Double.NaN; // mean luma 0..1
     public double[] signature;        // face geometry signature (see FaceSignature), or null
+    public double faceSim = Double.NaN; // face-recognition similarity to the enrolled patient (see FaceMatch)
 
     public boolean oneFace() { return faces == 1; }
     public boolean frontal() { return oneFace() && !Double.isNaN(yaw) && Math.abs(yaw) <= 20; }

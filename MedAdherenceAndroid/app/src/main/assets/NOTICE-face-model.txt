@@ -1,0 +1,10 @@
+face_sface_int8.tflite
+
+SFace face recognition model (face_recognition_sface_2021dec) from the OpenCV Zoo,
+https://github.com/opencv/opencv_zoo/tree/main/models/face_recognition_sface
+Converted to TensorFlow Lite (NHWC input, dynamic-range int8 weights) for this app.
+
+Licensed under the Apache License, Version 2.0: https://www.apache.org/licenses/LICENSE-2.0
+
+Paper: Zhong, Y. et al. "SFace: Sigmoid-Constrained Hypersphere Loss for Robust Face Recognition",
+IEEE Transactions on Image Processing, 2021.

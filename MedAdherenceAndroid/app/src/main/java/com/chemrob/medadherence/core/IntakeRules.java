@@ -16,7 +16,7 @@ public final class IntakeRules {
     private IntakeRules() {}
 
     public enum Step {
-        FACE("Look at the camera so your face is in the frame"),
+        FACE("Look at the camera, then slowly turn your head a little to each side"),
         SHOW("Hold the medicine up next to your face"),
         MOUTH("Put the medicine in your mouth"),
         DRINK("Drink water and swallow"),
@@ -33,6 +33,7 @@ public final class IntakeRules {
     public static final double DRINK_PITCH = 8;      // head tilted back by at least this many degrees
     public static final double MIN_BRIGHTNESS = 0.12;
     public static final int MIN_WIDE_FRAMES = 3;     // mouth held open over several frames
+    public static final double HEAD_TURN = 20;       // left-right head turn range (live person, not a photo)
 
     public static final class StepResult {
         public final Step step;
@@ -63,6 +64,7 @@ public final class IntakeRules {
         switch (step) {
             case FACE:
                 if (!frontal) miss.add("face looking at the camera");
+                else if (yawRange(frames) < HEAD_TURN) miss.add("head turned a little to each side");
                 break;
             case SHOW:
                 if (!face) miss.add("face in view");
@@ -85,6 +87,17 @@ public final class IntakeRules {
         return r;
     }
 
+    /** Range of left-right head angle over frames with one face (degrees). */
+    public static double yawRange(List<FrameObs> frames) {
+        double lo = Double.NaN, hi = Double.NaN;
+        for (FrameObs f : frames) {
+            if (!f.oneFace() || Double.isNaN(f.yaw)) continue;
+            lo = Double.isNaN(lo) ? f.yaw : Math.min(lo, f.yaw);
+            hi = Double.isNaN(hi) ? f.yaw : Math.max(hi, f.yaw);
+        }
+        return Double.isNaN(lo) ? 0 : hi - lo;
+    }
+
     /** A blink anywhere in the session: eyes seen open, then closed, then open again. */
     public static boolean blinked(List<FrameObs> frames) {
         int state = 0; // 0 = waiting for open, 1 = open seen, 2 = closed seen
@@ -95,6 +108,23 @@ public final class IntakeRules {
             else if (state == 2 && f.eyesOpen >= 0.7) return true;
         }
         return false;
+    }
+
+    /** Face-recognition checks needed before a match rate counts. */
+    public static final int MIN_FACE_CHECKS = 3;
+
+    /**
+     * Share of face-recognition checks that recognised the enrolled patient; NaN when there were
+     * fewer than {@link #MIN_FACE_CHECKS} (e.g. no recognition model or no enrolled fingerprints).
+     */
+    public static double recognitionRate(List<FrameObs> frames) {
+        int n = 0, ok = 0;
+        for (FrameObs f : frames) {
+            if (Double.isNaN(f.faceSim)) continue;
+            n++;
+            if (FaceMatch.isMatch(f.faceSim)) ok++;
+        }
+        return n < MIN_FACE_CHECKS ? Double.NaN : (double) ok / n;
     }
 
     /** Share of frames with one face whose signature matches the enrolled one; NaN when not measurable. */
@@ -114,23 +144,43 @@ public final class IntakeRules {
         public int stepsPassed, stepsTotal;
         public boolean live;
         public double faceMatch = Double.NaN; // NaN = no enrolled face / not measurable
+        public boolean recognition;           // faceMatch came from the face-recognition model
         public Verification verification;
         public String summary;
     }
 
     public static Verdict verdict(List<StepResult> steps, List<FrameObs> all, double[] enrolledFace) {
+        return verdict(steps, all, enrolledFace, false);
+    }
+
+    /**
+     * @param recognitionEnrolled the patient enrolled with the face-recognition model; then the
+     *                            recognition rate decides the face check (the geometry signature is
+     *                            only a fallback for older enrolments)
+     */
+    public static Verdict verdict(List<StepResult> steps, List<FrameObs> all, double[] enrolledFace, boolean recognitionEnrolled) {
         Verdict v = new Verdict();
         v.stepsTotal = steps.size();
         for (StepResult s : steps) if (s.passed) v.stepsPassed++;
         v.live = blinked(all);
-        v.faceMatch = faceMatchRate(enrolledFace, all);
-        boolean faceOk = Double.isNaN(v.faceMatch) ? enrolledFace == null : v.faceMatch >= 0.6;
+        boolean faceOk;
+        if (recognitionEnrolled) {
+            v.faceMatch = recognitionRate(all);
+            v.recognition = true;
+            faceOk = !Double.isNaN(v.faceMatch) && v.faceMatch >= 0.7;
+        } else {
+            v.faceMatch = faceMatchRate(enrolledFace, all);
+            faceOk = Double.isNaN(v.faceMatch) ? enrolledFace == null : v.faceMatch >= 0.6;
+        }
         boolean ok = v.stepsTotal > 0 && v.stepsPassed == v.stepsTotal && v.live && faceOk;
         v.verification = ok ? Verification.AUTO_VERIFIED : Verification.NEEDS_REVIEW;
         StringBuilder sb = new StringBuilder();
         sb.append(v.stepsPassed).append('/').append(v.stepsTotal).append(" steps confirmed by AI");
         sb.append(v.live ? ", blink seen" : ", no blink seen");
-        if (enrolledFace == null) sb.append(", no face enrolled");
+        if (recognitionEnrolled) {
+            if (Double.isNaN(v.faceMatch)) sb.append(", face not recognised (too few clear views)");
+            else sb.append(String.format(java.util.Locale.ROOT, ", recognised as the patient in %.0f%% of checks", v.faceMatch * 100));
+        } else if (enrolledFace == null) sb.append(", no face enrolled");
         else if (Double.isNaN(v.faceMatch)) sb.append(", face not measurable");
         else sb.append(String.format(java.util.Locale.ROOT, ", face match %.0f%%", v.faceMatch * 100));
         v.summary = sb.toString();

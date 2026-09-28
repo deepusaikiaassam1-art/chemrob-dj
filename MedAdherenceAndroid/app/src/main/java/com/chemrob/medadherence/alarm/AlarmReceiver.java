@@ -7,11 +7,15 @@ import android.content.Intent;
 import com.chemrob.medadherence.Store;
 import com.chemrob.medadherence.core.AppData;
 import com.chemrob.medadherence.core.Appointment;
+import com.chemrob.medadherence.core.Caregiver;
+import com.chemrob.medadherence.core.I18n;
+import com.chemrob.medadherence.core.TimeUtil;
 import com.chemrob.medadherence.core.DoseStatus;
 import com.chemrob.medadherence.core.ScheduleEngine;
 import com.chemrob.medadherence.core.ScheduledDose;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /** The AlarmManager wake-up for a dose, and the Taken / Snooze / Skip notification buttons. */
 public class AlarmReceiver extends BroadcastReceiver {
@@ -35,8 +39,13 @@ public class AlarmReceiver extends BroadcastReceiver {
                     if (a.id.equals(id) && !a.done) Notifications.postAppointment(ctx, a);
                 return;
             }
+            if (AlarmScheduler.CARE_CHECK.equals(key) || AlarmScheduler.CARE_SUMMARY.equals(key)) {
+                caregiver(ctx, AlarmScheduler.CARE_SUMMARY.equals(key));
+                AlarmScheduler.syncAll(ctx);
+                return;
+            }
             if (TEST_KEY.equals(key)) {
-                Notifications.postRinging(ctx, key, "Test alarm", "This is how your medicine reminder rings.", false);
+                Notifications.postRinging(ctx, key, I18n.t("Test alarm"), I18n.t("This is how your medicine reminder rings."), false);
                 return;
             }
             AppData data = Store.get(ctx);
@@ -56,6 +65,30 @@ public class AlarmReceiver extends BroadcastReceiver {
         DoseStatus status = ACTION_TAKEN.equals(action) ? DoseStatus.TAKEN
                 : ACTION_SNOOZE.equals(action) ? DoseStatus.SNOOZED : DoseStatus.SKIPPED;
         record(ctx, key, status);
+    }
+
+    /** Offers to tell the caregiver about newly missed doses, or sends the evening summary. */
+    static void caregiver(Context ctx, boolean summary) {
+        AppData d = Store.get(ctx);
+        String number = d.profile.caregiverNumber();
+        if (number.isEmpty()) return;
+        LocalDateTime now = LocalDateTime.now();
+        if (summary) {
+            if (!d.settings.caregiverDailySummary) return;
+            Notifications.postCaregiver(ctx, "summary", I18n.tf("Send today's summary to %s", d.profile.caregiverLabel()),
+                    Caregiver.dailySummary(d, now.toLocalDate(), now), number);
+            return;
+        }
+        if (!d.settings.caregiverMissedAlerts) return;
+        LocalDateTime since = TimeUtil.parseSecond(d.settings.caregiverLastCheck);
+        if (since == null || since.isAfter(now)) since = now.minusHours(1);
+        if (since.isBefore(now.minusDays(1))) since = now.minusDays(1); // phone was off: only recent misses
+        List<ScheduledDose> missed = Caregiver.newlyMissed(d, since, now);
+        d.settings.caregiverLastCheck = TimeUtil.second(now);
+        Store.save(ctx);
+        if (!missed.isEmpty())
+            Notifications.postCaregiver(ctx, "missed", I18n.tf("Missed dose - tell %s?", d.profile.caregiverLabel()),
+                    Caregiver.missedMessage(d, missed), number);
     }
 
     /** Records an action from any surface (notification, ringing screen, app). */

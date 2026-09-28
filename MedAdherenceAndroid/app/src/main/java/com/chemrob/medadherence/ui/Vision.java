@@ -3,6 +3,7 @@ package com.chemrob.medadherence.ui;
 import android.graphics.PointF;
 import android.graphics.Rect;
 
+import com.chemrob.medadherence.core.FaceMatch;
 import com.chemrob.medadherence.core.FaceSignature;
 import com.chemrob.medadherence.core.FrameAnalysis;
 import com.chemrob.medadherence.core.FrameObs;
@@ -119,6 +120,22 @@ public final class Vision {
             if (Double.isNaN(best) || d < best) best = d;
         }
         obs.handToMouth = best;
+    }
+
+    /**
+     * The five face-recognition landmarks (eyes, nose, mouth corners) in template order, in upright
+     * image coordinates; null if any is missing.
+     */
+    public static double[] alignPoints(Face f) {
+        if (f == null) return null;
+        int[] ids = {FaceLandmark.LEFT_EYE, FaceLandmark.RIGHT_EYE, FaceLandmark.NOSE_BASE, FaceLandmark.MOUTH_LEFT, FaceLandmark.MOUTH_RIGHT};
+        double[][] p = new double[ids.length][];
+        for (int i = 0; i < ids.length; i++) {
+            PointF q = pos(f, ids[i]);
+            if (q == null) return null;
+            p[i] = new double[]{q.x, q.y};
+        }
+        return FaceMatch.templateOrder(p[0], p[1], p[2], p[3], p[4]);
     }
 
     private static PointF pos(Face f, int landmark) {

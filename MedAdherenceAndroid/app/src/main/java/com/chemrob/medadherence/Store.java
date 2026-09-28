@@ -41,7 +41,45 @@ public final class Store {
             f.renameTo(new File(f.getPath() + ".corrupt-" + System.currentTimeMillis()));
         }
         if (data == null) data = new AppData();
+        com.chemrob.medadherence.ui.Lang.apply(ctx, data);
         return data;
+    }
+
+    /**
+     * Replaces everything with a restored backup: moves the staged photos into app storage and
+     * installs the restored data file. The JSON is checked before anything is changed.
+     */
+    public static synchronized void restore(Context ctx, String json, File staging) throws Exception {
+        AppData restored = JsonCodec.fromJson(json); // throws if the data is not valid
+        move(staging, ctx.getFilesDir());
+        deleteTree(staging);
+        data = restored;
+        save(ctx);
+        com.chemrob.medadherence.ui.Lang.apply(ctx, data);
+    }
+
+    private static void move(File from, File to) {
+        File[] list = from.listFiles();
+        if (list == null) return;
+        for (File f : list) {
+            File dest = new File(to, f.getName());
+            if (f.isDirectory()) {
+                //noinspection ResultOfMethodCallIgnored
+                dest.mkdirs();
+                move(f, dest);
+            } else {
+                //noinspection ResultOfMethodCallIgnored
+                dest.delete();
+                if (!f.renameTo(dest)) Log.w(TAG, "Could not restore " + f);
+            }
+        }
+    }
+
+    public static void deleteTree(File f) {
+        File[] list = f.listFiles();
+        if (list != null) for (File c : list) deleteTree(c);
+        //noinspection ResultOfMethodCallIgnored
+        f.delete();
     }
 
     public static synchronized void save(Context ctx) {
