@@ -98,7 +98,7 @@ public class BackupCaregiverTest {
         assertEquals("{\"p\":\"\\/new\\/files\\/a.jpg\"}", Backup.rebase("{\"p\":\"\\/old\\/files\\/a.jpg\"}", "/old/files", "/new/files"));
     }
 
-    @Test public void caregiverAlerts() {
+    @Test public void caregiverAlerts() throws Exception {
         AppData d = new AppData();
         d.profile.name = "Asha Devi";
         Medication m = CoreTest.med("08:00, 20:00", 0, "2026-09-01", 1);
