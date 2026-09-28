@@ -229,6 +229,15 @@ namespace MedAdherence
             todaySignature = TodaySignature(now);
             int taken = doses.Count(d => ScheduleEngine.StatusOf(D, d, now) == DoseStatus.Taken);
 
+            foreach (var low in D.medications.Where(x => Inventory.NeedsRefill(x, now)).ToList())
+            {
+                var lm = low;
+                var banner = UIKit.Card(body, UIKit.Hex("FDE7E5"));
+                UIKit.Label(banner.transform, "<b>Refill " + lm.name + " soon</b> - " + Inventory.Label(lm) +
+                            ". Contact your pharmacy so you don't run out.", 36, UIKit.Ink);
+                UIKit.Button(banner.transform, "I have refilled it", UIKit.Accent, () => AskRefill(lm), 100, 34);
+            }
+
             var summary = UIKit.Card(body);
             UIKit.Label(summary.transform, string.Format("<b>{0} of {1}</b> doses taken today", taken, doses.Count), 44);
             var next = ScheduleEngine.Doses(D, now, now.AddDays(7)).FirstOrDefault(d => ScheduleEngine.StatusOf(D, d, now) == DoseStatus.Pending);
@@ -444,12 +453,19 @@ namespace MedAdherence
                     : "ongoing from " + m.startDate;
                 UIKit.Label(card.transform, m.TimesLabel + " " + freq + "\n" + course, 34, UIKit.Muted);
                 if (!string.IsNullOrEmpty(m.instructions)) UIKit.Label(card.transform, m.instructions, 34, UIKit.Muted, FontStyle.Italic);
+                if (m.TracksStock)
+                {
+                    bool low = Inventory.NeedsRefill(m, DateTime.Now);
+                    UIKit.Label(card.transform, (low ? "Refill soon: " : "Stock: ") + Inventory.Label(m), 34,
+                        low ? UIKit.Bad : UIKit.Muted, low ? FontStyle.Bold : FontStyle.Normal);
+                }
                 if (m.EndDate.HasValue && m.EndDate.Value < DateTime.Today)
                     UIKit.Label(card.transform, "Course completed", 34, UIKit.Good, FontStyle.Bold);
 
                 var actions = UIKit.HBox(card.transform, 16);
                 actions.childForceExpandWidth = true;
                 UIKit.Button(actions.transform, "Edit", UIKit.Primary, () => WithEditPermission(() => EditMedication(m)), 100, 34);
+                UIKit.Button(actions.transform, "Refill", UIKit.Accent, () => AskRefill(m), 100, 34);
                 UIKit.Button(actions.transform, m.Active ? "Pause" : "Resume", UIKit.Warn, () => WithEditPermission(() =>
                 {
                     if (m.Active) m.Pause(DateTime.Now); else m.Resume(DateTime.Now);
@@ -496,13 +512,19 @@ namespace MedAdherence
             var instr = UIKit.Field(card.transform, "Instructions", "e.g. after food", m.instructions);
 
             UIKit.Label(card.transform, "How often", 34, UIKit.Muted, FontStyle.Bold);
-            InputField times = null, start = null, days = null;
+            InputField times = null, start = null, days = null, stockIn = null, perDoseIn = null;
             Action capture = () =>
             {
                 m.name = name.text.Trim(); m.dose = dose.text.Trim(); m.instructions = instr.text.Trim();
                 if (RegimenParser.TryParseTimes(times.text, out var ts, out var every, out _)) { m.times = ts; if (every > 1) m.everyNDays = every; }
                 m.startDate = start.text.Trim();
                 if (int.TryParse(days.text, out var dd)) m.durationDays = Math.Max(0, dd);
+                if (stockIn != null)
+                {
+                    if (stockIn.text.Trim().Length == 0) m.stock = -1;
+                    else if (RegimenParser.TryParseNumber(stockIn.text, out var st) && st >= 0) m.stock = st;
+                    if (RegimenParser.TryParseNumber(perDoseIn.text, out var pd) && pd > 0) m.unitsPerDose = pd;
+                }
             };
 
             var presetRow1 = UIKit.HBox(card.transform, 12);
@@ -538,6 +560,16 @@ namespace MedAdherence
 
             UIKit.Toggle(card.transform, "Observed dose: patient takes it in front of the camera", m.observed, v => m.observed = v);
 
+            var stockRow = UIKit.HBox(card.transform, 16);
+            stockRow.childForceExpandWidth = true;
+            var stockCol = UIKit.VBox(stockRow.transform, 8);
+            stockIn = UIKit.Field(stockCol.transform, "Units in stock", "blank = don't track",
+                m.TracksStock ? m.stock.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) : "", InputField.ContentType.DecimalNumber);
+            var perCol = UIKit.VBox(stockRow.transform, 8);
+            perDoseIn = UIKit.Field(perCol.transform, "Units per dose", "1",
+                m.unitsPerDose.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture), InputField.ContentType.DecimalNumber);
+            UIKit.Label(card.transform, "With stock entered, the app counts down each dose taken and warns before it runs out.", 30, UIKit.Muted);
+
             if (error != null) UIKit.Label(body, error, 36, UIKit.Bad, FontStyle.Bold);
 
             var actions = UIKit.HBox(body, 16);
@@ -551,6 +583,10 @@ namespace MedAdherence
                 else if (!RegimenParser.TryParseTimes(times.text, out _, out _, out var tErr)) err = tErr + ". Use times like 08:00 20:00.";
                 else if (!DateTime.TryParseExact(m.startDate, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
                              System.Globalization.DateTimeStyles.None, out _)) err = "Start date must look like 2026-10-01.";
+                else if (stockIn.text.Trim().Length > 0 && (!RegimenParser.TryParseNumber(stockIn.text, out var sv) || sv < 0))
+                    err = "Stock must be a number of units, e.g. 30, or left blank.";
+                else if (!RegimenParser.TryParseNumber(perDoseIn.text, out var pv) || pv <= 0)
+                    err = "Units per dose must be more than 0, e.g. 1 or 0.5.";
                 if (err != null) { BuildForm(m, isNew, err); return; }
                 store.Upsert(m);
                 Reschedule();
@@ -825,6 +861,30 @@ namespace MedAdherence
                 row.childForceExpandWidth = true;
                 UIKit.Button(row.transform, "Cancel", UIKit.Muted, CloseModal);
                 UIKit.Button(row.transform, "Yes", UIKit.Bad, () => { CloseModal(); onYes(); });
+            });
+        }
+
+        void AskRefill(Medication med)
+        {
+            OpenModal(m =>
+            {
+                UIKit.Label(m, "Refill " + med.name, 44, UIKit.Ink, FontStyle.Bold);
+                UIKit.Label(m, med.TracksStock ? "Now: " + Inventory.Label(med) : "Stock is not tracked yet. Enter what you have now.", 34, UIKit.Muted);
+                var qty = UIKit.Input(m, "Units added, e.g. 30", "", InputField.ContentType.DecimalNumber);
+                var msg = UIKit.Label(m, "", 34, UIKit.Bad);
+                var row = UIKit.HBox(m, 16);
+                row.childForceExpandWidth = true;
+                UIKit.Button(row.transform, "Cancel", UIKit.Muted, CloseModal);
+                UIKit.Button(row.transform, "Add", UIKit.Good, () =>
+                {
+                    if (!RegimenParser.TryParseNumber(qty.text, out var units) || units <= 0) { msg.text = "Enter how many units were added."; return; }
+                    Inventory.Refill(med, units);
+                    store.Save();
+                    Reschedule();
+                    CloseModal();
+                    Toast(med.name + ": " + Inventory.Label(med));
+                    Refresh();
+                });
             });
         }
 

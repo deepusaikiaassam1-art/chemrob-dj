@@ -39,6 +39,11 @@ namespace MedAdherence.Core
         public bool observed;               // requires camera-observed intake
         public List<string> pauses = new List<string>(); // "yyyy-MM-dd HH:mm|yyyy-MM-dd HH:mm", open-ended if nothing after '|'
         public string addedBy = "patient";  // "patient" | "pharmacist"
+        public float stock = -1;            // units on hand (tablets, capsules, ml...); -1 = not tracked
+        public float unitsPerDose = 1;      // units used by one dose
+        public int refillAlertDays = 5;     // warn when stock covers fewer days than this
+
+        public bool TracksStock => stock >= 0;
 
         public DateTime StartDate => TimeUtil.ParseDate(startDate);
 

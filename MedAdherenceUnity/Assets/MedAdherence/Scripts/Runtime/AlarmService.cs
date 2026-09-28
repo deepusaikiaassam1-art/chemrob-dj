@@ -94,7 +94,8 @@ namespace MedAdherence
 
                 string title = dose.Med.name + (string.IsNullOrEmpty(dose.Med.dose) ? "" : " - " + dose.Med.dose);
                 string body = "Scheduled " + TimeUtil.Clock(dose.Time) +
-                              (string.IsNullOrEmpty(dose.Med.instructions) ? "" : " | " + dose.Med.instructions);
+                              (string.IsNullOrEmpty(dose.Med.instructions) ? "" : " | " + dose.Med.instructions) +
+                              (Inventory.NeedsRefill(dose.Med, now) ? " | Refill soon: " + Inventory.Label(dose.Med) : "");
                 batch.items.Add(new NativeAlarm { key = dose.Key, at = ToEpochMs(at), title = title, body = body, observed = dose.Med.observed });
             }
             // Alarms only exist up to the horizon, and the app cannot extend them without being opened.

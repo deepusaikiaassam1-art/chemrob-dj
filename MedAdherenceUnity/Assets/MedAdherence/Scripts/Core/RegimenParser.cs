@@ -6,11 +6,13 @@ namespace MedAdherence.Core
     /// <summary>
     /// Fast regimen entry for pharmacists: frequency shorthands (OD, BD, TDS, ...) and bulk import,
     /// one medicine per line:
-    ///   Name | Dose | Times or frequency | Duration | Start | Observed | Instructions
+    ///   Name | Dose | Times or frequency | Duration | Start | Observed | Instructions | Stock | Units per dose
     /// e.g.
     ///   Metformin | 500 mg, 1 tab | BD | 30 | today | no | after food
     ///   Rifampicin, 600 mg, 07:00, 6m, 2026-10-01, yes, empty stomach
     ///   Methotrexate | 7.5 mg | WEEKLY 09:00 | 12w | today | no |
+    ///   Amlodipine | 5 mg | OD | 0 | today | no | | 28 | 1
+    /// Stock (units on hand) is optional; leave it empty not to track refills.
     /// Only the name is required. Separator is '|' if present on the line, otherwise ','.
     /// </summary>
     public static class RegimenParser
@@ -150,20 +152,34 @@ namespace MedAdherence.Core
                 else { result.errors.Add("Line " + (i + 1) + ": start date must be yyyy-MM-dd, 'today' or 'tomorrow'"); continue; }
 
                 med.observed = ParseYesNo(Field(5));
+
+                if (Field(7).Length > 0)
+                {
+                    if (!TryParseNumber(Field(7), out med.stock) || med.stock < 0)
+                    { result.errors.Add("Line " + (i + 1) + ": stock must be a number of units, e.g. 30"); continue; }
+                    if (Field(8).Length > 0 && (!TryParseNumber(Field(8), out med.unitsPerDose) || med.unitsPerDose <= 0))
+                    { result.errors.Add("Line " + (i + 1) + ": units per dose must be a positive number, e.g. 1 or 0.5"); continue; }
+                }
                 result.medications.Add(med);
             }
             return result;
         }
 
+        public static bool TryParseNumber(string raw, out float value) =>
+            float.TryParse((raw ?? "").Trim().Replace(',', '.'), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out value);
+
         /// <summary>Inverse of <see cref="Import"/>, so a regimen can be exported and re-loaded on another phone.</summary>
         public static string Export(IEnumerable<Medication> meds)
         {
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("# Name | Dose | Times | Duration days (0 = ongoing) | Start | Observed | Instructions");
+            sb.AppendLine("# Name | Dose | Times | Duration days (0 = ongoing) | Start | Observed | Instructions | Stock | Units per dose");
             foreach (var m in meds)
             {
                 string times = (m.everyNDays > 1 ? "Q" + m.everyNDays + "D " : "") + string.Join(" ", m.times.ToArray());
-                sb.AppendLine(string.Join(" | ", new[] { m.name, m.dose, times, m.durationDays.ToString(), m.startDate, m.observed ? "yes" : "no", m.instructions }));
+                sb.AppendLine(string.Join(" | ", new[] { m.name, m.dose, times, m.durationDays.ToString(), m.startDate, m.observed ? "yes" : "no", m.instructions,
+                    m.TracksStock ? m.stock.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) : "",
+                    m.TracksStock ? m.unitsPerDose.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) : "" }).TrimEnd(' ', '|'));
             }
             return sb.ToString();
         }

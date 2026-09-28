@@ -57,8 +57,8 @@ dotnet test MedAdherenceUnity/CoreTests~
 Bulk import format (see `sample_regimen.txt`):
 
 ```
-Name | Dose | Times or OD/BD/TDS/QID/HS/Q8H/WEEKLY | Duration (7, 2w, 6m, 0 = ongoing) | Start | Observed yes/no | Instructions
-Metformin | 500 mg, 1 tablet | BD | 0 | today | no | after food
+Name | Dose | Times or OD/BD/TDS/QID/HS/Q8H/WEEKLY | Duration (7, 2w, 6m, 0 = ongoing) | Start | Observed yes/no | Instructions | Stock | Units per dose
+Metformin | 500 mg, 1 tablet | BD | 0 | today | no | after food | 60 | 1
 Rifampicin + Isoniazid | 2 tablets | 07:00 | 6m | today | yes | empty stomach
 Methotrexate | 7.5 mg | WEEKLY 09:00 | 12w | today | no |
 ```
@@ -69,6 +69,19 @@ On first run, open **Pharmacist → Alarm reliability** and fix anything marked 
 - exact alarms
 - full-screen alarm over the lock screen (Android 14)
 - battery optimisation (needed on Xiaomi/Oppo/Vivo/Samsung devices that kill background apps)
+
+## Stock and refills
+
+If you enter the units on hand (tablets, capsules, ml) for a medicine, the app does four things:
+
+- It takes one dose's worth off the stock each time a dose is marked taken. If a dose is changed
+  back to skipped, the stock is put back.
+- It shows what is left on the medicine card, for example "12 left (~6 days)".
+- When less than 5 days' supply is left, it shows a red **Refill soon** banner on Today and adds
+  "Refill soon" to the alarm text. It doesn't warn if the course ends before the stock runs out.
+- The **Refill** button adds new stock.
+
+Leave the stock blank if you don't want it tracked.
 
 ## How adherence is measured
 

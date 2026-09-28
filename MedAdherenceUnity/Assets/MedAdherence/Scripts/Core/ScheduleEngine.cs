@@ -76,8 +76,10 @@ namespace MedAdherence.Core
                 rec.Verification = med != null && med.observed ? VerificationStatus.NeedsReview : VerificationStatus.NotRequired;
                 data.records.Add(rec);
             }
+            var previous = rec.Status;
             rec.Status = status;
             rec.actionAt = TimeUtil.Second(at);
+            Inventory.OnStatusChanged(data.FindMed(medId), previous, status);
             return rec;
         }
     }
