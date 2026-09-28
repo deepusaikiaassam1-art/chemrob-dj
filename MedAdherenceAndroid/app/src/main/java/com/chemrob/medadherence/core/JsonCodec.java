@@ -37,6 +37,11 @@ public final class JsonCodec {
             }
             root.put("records", recs);
             Settings s = d.settings;
+            JSONArray appts = new JSONArray();
+            for (Appointment a : d.appointments)
+                appts.put(new JSONObject().put("id", a.id).put("when", a.when).put("doctor", a.doctor)
+                        .put("place", a.place).put("purpose", a.purpose).put("done", a.done));
+            root.put("appointments", appts);
             Profile pr = d.profile;
             root.put("profile", new JSONObject().put("name", pr.name).put("dateOfBirth", pr.dateOfBirth)
                     .put("sex", pr.sex).put("phone", pr.phone).put("conditions", pr.conditions)
@@ -91,6 +96,18 @@ public final class JsonCodec {
             r.evidence = strings(o.optJSONArray("evidence"));
             r.note = o.optString("note", "");
             d.records.add(r);
+        }
+        JSONArray appts = root.optJSONArray("appointments");
+        for (int i = 0; appts != null && i < appts.length(); i++) {
+            JSONObject o = appts.getJSONObject(i);
+            Appointment a = new Appointment();
+            a.id = o.optString("id", a.id);
+            a.when = o.optString("when", "");
+            a.doctor = o.optString("doctor", "");
+            a.place = o.optString("place", "");
+            a.purpose = o.optString("purpose", "");
+            a.done = o.optBoolean("done", false);
+            d.appointments.add(a);
         }
         JSONObject p = root.optJSONObject("profile");
         if (p != null) {

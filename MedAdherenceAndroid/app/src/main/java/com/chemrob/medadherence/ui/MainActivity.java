@@ -42,6 +42,7 @@ import com.chemrob.medadherence.alarm.AlarmScheduler;
 import com.chemrob.medadherence.core.AdherenceCalculator;
 import com.chemrob.medadherence.core.AdherenceStats;
 import com.chemrob.medadherence.core.AppData;
+import com.chemrob.medadherence.core.Appointment;
 import com.chemrob.medadherence.core.DoseRecord;
 import com.chemrob.medadherence.core.DoseStatus;
 import com.chemrob.medadherence.core.Inventory;
@@ -68,12 +69,12 @@ import java.util.Locale;
  * reports) and Pharmacist (PIN-protected bulk import, evidence review, settings, alarm checks).
  */
 public class MainActivity extends Activity {
-    private enum Tab { TODAY, MEDICINES, ADHERENCE, PHARMACIST }
-    private enum Mode { TABS, MED_FORM, PROFILE }
+    private enum Tab { TODAY, MEDICINES, DOCTOR, ADHERENCE, PHARMACIST }
+    private enum Mode { TABS, MED_FORM, PROFILE, VISIT_FORM }
 
     /** A dose may be marked taken up to this long before its scheduled time. */
     private static final int EARLY_WINDOW_MIN = 120;
-    private static final int REQ_NOTIFY = 1, REQ_PHOTO = 3, REQ_GALLERY = 4;
+    private static final int REQ_NOTIFY = 1, REQ_PHOTO = 3, REQ_GALLERY = 4, REQ_SOS = 5;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView headerTitle, headerSub;
@@ -111,6 +112,19 @@ public class MainActivity extends Activity {
         header.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         headerTitle = Ui.text(titles, "", 26, Ui.INK, true);
         headerSub = Ui.text(titles, "", 16, Ui.MUTED, false);
+        TextView sos = new TextView(this);
+        sos.setText("SOS");
+        sos.setTextColor(android.graphics.Color.WHITE);
+        sos.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        sos.setTypeface(Ui.medium(), Typeface.BOLD);
+        sos.setGravity(Gravity.CENTER);
+        sos.setBackground(Ui.rounded(this, android.graphics.Color.parseColor("#D93F3F"), 24));
+        sos.setElevation(Ui.dp(this, 3));
+        sos.setContentDescription("Emergency: call and text your emergency contact");
+        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(Ui.dp(this, 72), Ui.dp(this, 48));
+        sl.rightMargin = Ui.dp(this, 10);
+        header.addView(sos, sl);
+        sos.setOnClickListener(v -> startSos());
         avatar = new FrameLayout(this);
         header.addView(avatar, new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 48)));
         avatar.setOnClickListener(v -> showProfileForm(false));
@@ -128,8 +142,8 @@ public class MainActivity extends Activity {
         nav.setBackgroundColor(Ui.SURFACE);
         nav.setElevation(Ui.dp(this, 8));
         nav.setPadding(Ui.dp(this, 4), Ui.dp(this, 8), Ui.dp(this, 4), Ui.dp(this, 10));
-        String[] labels = {"Today", "Medicines", "Adherence", "Pharmacist"};
-        int[] icons = {R.drawable.ic_home, R.drawable.ic_pill, R.drawable.ic_chart, R.drawable.ic_pharmacy};
+        String[] labels = {"Today", "Medicines", "Doctor", "Adherence", "Pharmacy"};
+        int[] icons = {R.drawable.ic_home, R.drawable.ic_pill, R.drawable.ic_calendar, R.drawable.ic_chart, R.drawable.ic_pharmacy};
         for (int i = 0; i < labels.length; i++) navItems.add(navItem(nav, labels[i], icons[i], Tab.values()[i]));
         root.addView(nav);
         setContentView(root);
@@ -144,11 +158,12 @@ public class MainActivity extends Activity {
         FrameLayout pill = new FrameLayout(this);
         ImageView iv = Ui.icon(this, icon, Ui.MUTED, 24);
         pill.addView(iv, new FrameLayout.LayoutParams(Ui.dp(this, 24), Ui.dp(this, 24), Gravity.CENTER));
-        item.addView(pill, new LinearLayout.LayoutParams(Ui.dp(this, 60), Ui.dp(this, 32)));
+        item.addView(pill, new LinearLayout.LayoutParams(Ui.dp(this, 56), Ui.dp(this, 32)));
         TextView tv = new TextView(this);
         tv.setText(label);
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         tv.setGravity(Gravity.CENTER);
+        tv.setMaxLines(1);
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         tl.topMargin = Ui.dp(this, 4);
         item.addView(tv, tl);
@@ -212,6 +227,7 @@ public class MainActivity extends Activity {
         switch (tab) {
             case TODAY: buildToday(); break;
             case MEDICINES: buildMedicines(); break;
+            case DOCTOR: buildDoctor(); break;
             case ADHERENCE: buildAdherence(); break;
             case PHARMACIST: buildPharmacist(); break;
         }
@@ -333,6 +349,7 @@ public class MainActivity extends Activity {
             }
             data().profile = p;
             Store.save(this);
+            if (!p.emergencyPhone.isEmpty()) askSosPermissions();
             toast(onboarding ? "Welcome, " + p.firstName() + "!" : "Profile saved");
             show(onboarding && data().medications.isEmpty() ? Tab.MEDICINES : Tab.TODAY);
         }).getLayoutParams().height = Ui.dp(this, 64);
@@ -384,6 +401,8 @@ public class MainActivity extends Activity {
             if (ScheduleEngine.statusOf(d, x, now) == DoseStatus.PENDING) { next = x; break; }
         if (due != null) heroDose(due, true, now);
         else if (next != null) heroDose(next, false, now);
+        Appointment visit = Appointment.next(d.appointments, now);
+        if (visit != null && visit.time().isBefore(now.plusDays(14))) visitCard(body, visit, now, false);
 
         // Progress ring.
         int taken = 0, settled = 0;
@@ -743,6 +762,142 @@ public class MainActivity extends Activity {
 
     private static String num(double v) {
         return v == Math.floor(v) ? String.valueOf((long) v) : String.valueOf(v);
+    }
+
+    // ================================================================== Emergency
+
+    private void startSos() {
+        Profile p = data().profile;
+        if (com.chemrob.medadherence.core.Emergency.number(p) == null) {
+            dialog().setTitle("Add an emergency contact")
+                    .setMessage("The SOS button calls and texts your emergency contact. Add their name and phone number in your profile.")
+                    .setNegativeButton("Not now", null)
+                    .setPositiveButton("Open profile", (dlg, w) -> showProfileForm(false)).show();
+            return;
+        }
+        startActivity(EmergencyActivity.intent(this));
+    }
+
+    private void askSosPermissions() {
+        List<String> missing = new ArrayList<>();
+        for (String perm : EmergencyActivity.permissions())
+            if (checkSelfPermission(perm) != PackageManager.PERMISSION_GRANTED) missing.add(perm);
+        if (!missing.isEmpty()) requestPermissions(missing.toArray(new String[0]), REQ_SOS);
+    }
+
+    // ================================================================== Doctor follow-ups
+
+    private void buildDoctor() {
+        AppData d = data();
+        LocalDateTime now = LocalDateTime.now();
+        header("Doctor follow-ups", d.profile.doctor.isEmpty() ? "Visits and check-ups" : d.profile.doctor);
+        Ui.button(body, "+  Add a follow-up", Ui.PRIMARY, v -> editVisit(null));
+
+        List<Appointment> upcoming = new ArrayList<>(), past = new ArrayList<>();
+        for (Appointment a : d.appointments) (a.isUpcoming(now) ? upcoming : past).add(a);
+        upcoming.sort((x, y) -> x.when.compareTo(y.when));
+        past.sort((x, y) -> y.when.compareTo(x.when));
+
+        if (upcoming.isEmpty()) {
+            LinearLayout c = Ui.card(body, Ui.SURFACE);
+            LinearLayout r = Ui.row(c);
+            r.addView(Ui.iconCircle(this, R.drawable.ic_calendar, Ui.PRIMARY_CONTAINER, Ui.ON_PRIMARY_CONTAINER, 52));
+            Ui.text(r, "No upcoming visits. Add the date your doctor asked you to come back, and the phone "
+                    + "will remind you the day before and 2 hours before.", 16, Ui.MUTED, false);
+        } else Ui.section(body, "Upcoming");
+        for (Appointment a : upcoming) visitCard(body, a, now, true);
+        if (!past.isEmpty()) Ui.section(body, "Past");
+        for (Appointment a : past.subList(0, Math.min(10, past.size()))) visitCard(body, a, now, true);
+    }
+
+    private void visitCard(LinearLayout parent, Appointment a, LocalDateTime now, boolean actions) {
+        boolean upcoming = a.isUpcoming(now);
+        LinearLayout c = Ui.card(parent, upcoming && !actions ? Ui.PRIMARY_CONTAINER : Ui.SURFACE);
+        int fg = upcoming && !actions ? Ui.ON_PRIMARY_CONTAINER : Ui.INK;
+        LinearLayout r = Ui.row(c);
+        r.addView(Ui.iconCircle(this, R.drawable.ic_calendar, upcoming ? Ui.PRIMARY : Ui.SURFACE_VARIANT,
+                upcoming ? Ui.ON_PRIMARY : Ui.MUTED, 52));
+        LinearLayout t = Ui.vbox(this);
+        r.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        LocalDateTime when = a.time();
+        long days = ChronoUnit.DAYS.between(now.toLocalDate(), when.toLocalDate());
+        String rel = !upcoming ? (a.done ? "Done" : "Past") : days == 0 ? "Today" : days == 1 ? "Tomorrow" : "In " + days + " days";
+        TextView label = Ui.text(t, (actions ? "" : "Doctor follow-up  \u00b7  ") + rel, 14, upcoming ? Ui.PRIMARY : Ui.MUTED, true);
+        if (!actions) label.setTextColor(fg);
+        Ui.text(t, when.format(DateTimeFormatter.ofPattern("EEE d MMM yyyy, HH:mm")), 19, fg, true);
+        Ui.text(t, a.who(), 16, fg, false);
+        if (!a.purpose.isEmpty()) Ui.text(t, a.purpose, 15, actions ? Ui.MUTED : fg, false);
+        if (!actions) {
+            c.setOnClickListener(v -> show(Tab.DOCTOR));
+            return;
+        }
+        LinearLayout b = Ui.row(c);
+        Ui.button(b, "Edit", Ui.PRIMARY_CONTAINER, v -> editVisit(a));
+        if (upcoming) Ui.button(b, "Mark done", Ui.SURFACE_VARIANT, v -> { a.done = true; saveAndSync(); render(); });
+        Ui.button(b, "Delete", Ui.SURFACE_VARIANT, v -> dialog().setMessage("Delete this follow-up?")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Delete", (dlg, w) -> { data().appointments.remove(a); saveAndSync(); render(); })
+                .show()).setTextColor(Ui.BAD);
+    }
+
+    private void editVisit(Appointment existing) {
+        Appointment a = existing != null ? existing.copy() : new Appointment();
+        if (existing == null) {
+            a.when = TimeUtil.minute(LocalDate.now().plusDays(7).atTime(10, 0));
+            a.doctor = data().profile.doctor;
+        }
+        buildVisitForm(a, existing, null);
+    }
+
+    private void buildVisitForm(Appointment a, Appointment existing, String error) {
+        mode = Mode.VISIT_FORM;
+        header(existing == null ? "Add a follow-up" : "Edit follow-up", "Date, time and doctor");
+        body.removeAllViews();
+        LocalDateTime cur = a.time() != null ? a.time() : LocalDate.now().plusDays(7).atTime(10, 0);
+
+        Ui.section(body, "When");
+        LinearLayout c = Ui.card(body, Ui.SURFACE);
+        EditText date = Ui.textField(c, "Date (yyyy-MM-dd)", "e.g. 2026-10-05", TimeUtil.date(cur.toLocalDate()));
+        date.setInputType(InputType.TYPE_CLASS_DATETIME | InputType.TYPE_DATETIME_VARIATION_DATE);
+        LinearLayout dr = Ui.row(c);
+        int[][] quick = {{7, 0}, {14, 0}, {30, 0}, {90, 0}};
+        String[] ql = {"1 week", "2 weeks", "1 month", "3 months"};
+        EditText[] timeRef = new EditText[1];
+        for (int i = 0; i < quick.length; i++) {
+            int days = quick[i][0];
+            Ui.chip(dr, ql[i], false, v -> {
+                date.setText(TimeUtil.date(LocalDate.now().plusDays(days)));
+            });
+        }
+        timeRef[0] = Ui.textField(c, "Time (24 h)", "e.g. 10:30", TimeUtil.clock(cur));
+        timeRef[0].setInputType(InputType.TYPE_CLASS_DATETIME | InputType.TYPE_DATETIME_VARIATION_TIME);
+
+        Ui.section(body, "Doctor");
+        LinearLayout dc = Ui.card(body, Ui.SURFACE);
+        EditText doctor = Ui.textField(dc, "Doctor", "e.g. Dr Sharma", a.doctor);
+        EditText place = Ui.textField(dc, "Hospital / clinic", "e.g. City Hospital, OPD 3", a.place);
+        EditText purpose = Ui.textField(dc, "Purpose / what to bring", "e.g. Diabetes review, bring blood report", a.purpose);
+
+        if (error != null) Ui.text(body, error, 16, Ui.BAD, true);
+        LinearLayout r = Ui.row(body);
+        ((LinearLayout.LayoutParams) r.getLayoutParams()).topMargin = Ui.dp(this, 12);
+        Ui.button(r, "Cancel", Ui.SURFACE_VARIANT, v -> show(Tab.DOCTOR));
+        Ui.button(r, "Save", Ui.PRIMARY, v -> {
+            String clock = TimeUtil.normalizeClock(timeRef[0].getText().toString());
+            a.when = date.getText().toString().trim() + " " + (clock == null ? timeRef[0].getText().toString().trim() : clock);
+            a.doctor = doctor.getText().toString().trim();
+            a.place = place.getText().toString().trim();
+            a.purpose = purpose.getText().toString().trim();
+            String err = a.validate(LocalDateTime.now());
+            if (err != null) { buildVisitForm(a, existing, err); return; }
+            List<Appointment> list = data().appointments;
+            if (existing != null) list.set(list.indexOf(existing), a); else list.add(a);
+            saveAndSync();
+            toast("Follow-up saved. You'll be reminded the day before and 2 hours before.");
+            show(Tab.DOCTOR);
+        });
+        if (error != null) scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+        else scroll.scrollTo(0, 0);
     }
 
     // ================================================================== Adherence

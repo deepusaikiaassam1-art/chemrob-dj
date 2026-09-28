@@ -8,6 +8,13 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- SOS button: call and text the emergency contact, with the patient's location. -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 
@@ -49,6 +56,14 @@
             android:showWhenLocked="true"
             android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
             android:turnScreenOn="true" />
+
+        <!-- SOS countdown, then SMS + direct call + automated voice on the speaker. -->
+        <activity
+            android:name=".ui.EmergencyActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true" />
 
         <!-- Photographs a medicine for its card and alarm. -->
         <activity

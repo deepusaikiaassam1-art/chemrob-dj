@@ -34,6 +34,21 @@ To install it:
   camera, or pick one from the gallery. At dose time the photo appears in the alarm notification
   and fills the ringing screen, next to the drug name, dose and instructions, so the patient takes
   the right tablet.
+- **Doctor follow-ups.** The Doctor tab stores each visit's date and time, doctor, hospital and
+  purpose, with quick buttons for 1 week, 2 weeks, 1 month or 3 months ahead. The phone reminds
+  the patient the day before and 2 hours before. The next visit appears on Today and in the
+  shared report, and visits can be marked done.
+- **SOS emergency button.** The red SOS button at the top of every screen starts a 5-second
+  countdown with a big Cancel, so an accidental tap does nothing. Then the app:
+  - texts the emergency contact with the patient's name, conditions, allergies and a map link to
+    their last known location
+  - calls the emergency contact directly
+  - turns on the loudspeaker and repeats an automated voice message asking for help
+
+  Android does not let apps put audio straight into a phone call, so the voice is played through
+  the speaker for the call's microphone to pick up. Most phones carry it, but some filter it out;
+  the SMS always contains the full message. The call, SMS and location permissions are asked for
+  when the emergency contact is saved, so an emergency is not held up by permission dialogs.
 - **Modern, easy-to-read design.** Large text and buttons, rounded cards and an icon bottom bar.
   The Today screen leads with the next or due medicine and a big **I took it** button, followed by
   a progress ring for the day. There is a light and a dark theme, which follows the phone by
@@ -93,7 +108,7 @@ gradle -p MedAdherenceAndroid testDebugUnitTest assembleDebug
 app/src/main/java/com/chemrob/medadherence/
   core/    plain Java: schedule, adherence, regimen parser, stock, camera-frame checks, JSON (unit-tested)
   alarm/   AlarmManager scheduling, alarm receiver, boot receiver, ringing notification
-  ui/      MainActivity (profile + all tabs), AlarmActivity (lock-screen ringing with drug photo),
+  ui/      MainActivity (profile + all tabs), EmergencyActivity (SOS), AlarmActivity (lock-screen ringing with drug photo),
            ObserveActivity (observed-dose camera), PhotoActivity (medicine photo), Ui (theme and widgets)
   Store.java   the JSON data file in app-private storage
 app/src/test/  JUnit tests for core/

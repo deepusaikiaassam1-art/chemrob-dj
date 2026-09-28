@@ -9,6 +9,7 @@ public final class AppData {
     public List<DoseRecord> records = new ArrayList<>();
     public Settings settings = new Settings();
     public Profile profile = new Profile();
+    public List<Appointment> appointments = new ArrayList<>();
 
     public Medication findMed(String id) {
         for (Medication m : medications) if (m.id.equals(id)) return m;

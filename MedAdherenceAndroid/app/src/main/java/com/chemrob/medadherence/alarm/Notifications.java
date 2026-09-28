@@ -13,6 +13,7 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 
 import com.chemrob.medadherence.core.AppData;
+import com.chemrob.medadherence.core.Appointment;
 import com.chemrob.medadherence.core.Inventory;
 import com.chemrob.medadherence.core.ScheduledDose;
 import com.chemrob.medadherence.core.TimeUtil;
@@ -104,6 +105,34 @@ public final class Notifications {
         Notification n = b.build();
         n.flags |= Notification.FLAG_INSISTENT; // repeat the alarm sound until the patient responds
         ctx.getSystemService(NotificationManager.class).notify(key, ID_DOSE, n);
+    }
+
+    static final String VISIT_CHANNEL_ID = "doctor_visits_v1";
+
+    /** Plain (non-ringing) reminder of a doctor follow-up. */
+    static void postAppointment(Context ctx, Appointment a) {
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        if (nm.getNotificationChannel(VISIT_CHANNEL_ID) == null) {
+            NotificationChannel ch = new NotificationChannel(VISIT_CHANNEL_ID, "Doctor follow-ups", NotificationManager.IMPORTANCE_HIGH);
+            ch.setDescription("Reminders of doctor appointments");
+            nm.createNotificationChannel(ch);
+        }
+        LocalDateTime t = a.time();
+        String when = t == null ? a.when : t.format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM, HH:mm"));
+        String body = when + "  \u00b7  " + a.who() + (a.purpose.isEmpty() ? "" : "\n" + a.purpose);
+        Intent open = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
+        Notification.Builder b = new Notification.Builder(ctx, VISIT_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_menu_my_calendar)
+                .setColor(0xFF4F46E5)
+                .setContentTitle("Doctor follow-up")
+                .setContentText(body)
+                .setStyle(new Notification.BigTextStyle().bigText(body))
+                .setCategory(Notification.CATEGORY_REMINDER)
+                .setAutoCancel(true);
+        if (open != null)
+            b.setContentIntent(PendingIntent.getActivity(ctx, ("visit" + a.id).hashCode(), open,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        nm.notify("visit" + a.id, 2, b.build());
     }
 
     public static void cancel(Context ctx, String key) {

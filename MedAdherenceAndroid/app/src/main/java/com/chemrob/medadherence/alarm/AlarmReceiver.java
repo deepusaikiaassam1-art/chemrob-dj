@@ -6,6 +6,7 @@ import android.content.Intent;
 
 import com.chemrob.medadherence.Store;
 import com.chemrob.medadherence.core.AppData;
+import com.chemrob.medadherence.core.Appointment;
 import com.chemrob.medadherence.core.DoseStatus;
 import com.chemrob.medadherence.core.ScheduleEngine;
 import com.chemrob.medadherence.core.ScheduledDose;
@@ -28,6 +29,12 @@ public class AlarmReceiver extends BroadcastReceiver {
         if (key == null || action == null) return;
 
         if (ACTION_FIRE.equals(action)) {
+            if (key.startsWith(AlarmScheduler.APPT_PREFIX)) {
+                String id = key.substring(AlarmScheduler.APPT_PREFIX.length(), key.lastIndexOf('|'));
+                for (Appointment a : Store.get(ctx).appointments)
+                    if (a.id.equals(id) && !a.done) Notifications.postAppointment(ctx, a);
+                return;
+            }
             if (TEST_KEY.equals(key)) {
                 Notifications.postRinging(ctx, key, "Test alarm", "This is how your medicine reminder rings.", false);
                 return;

@@ -102,6 +102,8 @@ public final class AdherenceCalculator {
             if (!pr.conditions.isEmpty()) sb.append("Conditions: ").append(pr.conditions).append('\n');
             if (!pr.allergies.isEmpty()) sb.append("Allergies: ").append(pr.allergies).append('\n');
             if (!pr.doctor.isEmpty()) sb.append("Doctor / pharmacy: ").append(pr.doctor).append('\n');
+            Appointment next = Appointment.next(data.appointments, r.to);
+            if (next != null) sb.append("Next doctor follow-up: ").append(next.when).append(", ").append(next.who()).append('\n');
         } else if (!data.settings.patientName.isEmpty()) sb.append("Patient: ").append(data.settings.patientName).append('\n');
         sb.append("Period: ").append(TimeUtil.date(r.from.toLocalDate())).append(" to ").append(TimeUtil.minute(r.to)).append("\n\n");
         append(sb, r.overall);
