@@ -1,0 +1,49 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.chemrob.medadherence'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.chemrob.medadherence'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    signingConfigs {
+        // A fixed key committed with the project (same idea as Android's own debug key), so every
+        // downloaded build installs over the previous one and the patient keeps their data.
+        // Not for Play Store publishing: create a private release key for that.
+        shared {
+            storeFile file('medadherence-debug.keystore')
+            storePassword 'android'
+            keyAlias 'medadherence'
+            keyPassword 'android'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.shared
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.shared
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // The app itself has no dependencies; these are for the JVM unit tests only.
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A capsule with a small bell mark: medicine + reminder. 108dp canvas, art inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:rotation="-40" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M38,42 L54,42 L54,66 L38,66 A12,12 0 0 1 38,42 Z" />
+        <path android:fillColor="#F0B455"
+            android:pathData="M54,42 L70,42 A12,12 0 0 1 70,66 L54,66 Z" />
+    </group>
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M74,30 a4,4 0 1 1 0.01,0 Z" />
+</vector>
