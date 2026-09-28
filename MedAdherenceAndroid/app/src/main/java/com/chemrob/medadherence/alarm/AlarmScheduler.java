@@ -10,6 +10,7 @@ import android.net.Uri;
 
 import com.chemrob.medadherence.Store;
 import com.chemrob.medadherence.core.AppData;
+import com.chemrob.medadherence.core.Appointment;
 import com.chemrob.medadherence.core.DoseStatus;
 import com.chemrob.medadherence.core.ScheduleEngine;
 import com.chemrob.medadherence.core.ScheduledDose;
@@ -30,6 +31,7 @@ public final class AlarmScheduler {
 
     /** Unanswered doses ring again this often, at most MAX_RINGS times in total. */
     public static final int REPEAT_MINUTES = 10;
+    static final String APPT_PREFIX = "APPT|";
     static final int MAX_RINGS = 4;
     static final int HORIZON_DAYS = 7;
 
@@ -74,6 +76,18 @@ public final class AlarmScheduler {
             if (canScheduleExact(ctx)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
             else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi); // may arrive a few minutes late
             scheduled.add(dose.key());
+        }
+        // Doctor follow-up reminders (a day before and 2 hours before).
+        for (Appointment a : data.appointments) {
+            for (LocalDateTime r : a.reminderTimes(now)) {
+                if (r.isAfter(now.plusDays(HORIZON_DAYS))) continue;
+                String key = APPT_PREFIX + a.id + "|" + r.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+                long ms = r.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                PendingIntent pi = fireIntent(ctx, key, PendingIntent.FLAG_UPDATE_CURRENT);
+                if (canScheduleExact(ctx)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
+                else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
+                scheduled.add(key);
+            }
         }
         // Forget ring counters of doses that are no longer pending.
         for (String k : p.getAll().keySet())

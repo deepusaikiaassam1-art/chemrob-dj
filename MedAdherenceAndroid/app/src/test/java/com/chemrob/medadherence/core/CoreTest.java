@@ -273,6 +273,7 @@ public class CoreTest {
         m.observed = true;
         m.stock = 3.5;
         m.pause(d(2026, 1, 3));
+        m.photo = "/data/med_photos/m1.jpg";
         AppData data = with(m);
         data.settings.patientName = "Asha";
         DoseRecord rec = ScheduleEngine.record(data, DoseKey.make("m1", t(2026, 1, 1, 8, 0)), DoseStatus.TAKEN, t(2026, 1, 1, 8, 5));
@@ -285,11 +286,117 @@ public class CoreTest {
         assertTrue(b.observed);
         assertEquals(2.5, b.stock, 1e-9); // one dose taken from 3.5
         assertFalse(b.isActive());
+        assertEquals("/data/med_photos/m1.jpg", b.photo);
+        assertEquals("/data/med_photos/m1.jpg", b.copy().photo);
         assertEquals("Asha", back.settings.patientName);
         DoseRecord br = back.records.get(0);
         assertEquals(DoseStatus.TAKEN, br.status);
         assertEquals(Verification.AUTO_VERIFIED, br.verification);
         assertEquals(Arrays.asList("/x/step1.jpg"), br.evidence);
         assertEquals(0, JsonCodec.fromJson("{}").medications.size());
+    }
+
+    // ---------------------------------------------------------------- profile
+
+    @Test public void profileValidationAgeAndRoundTrip() throws Exception {
+        LocalDate today = LocalDate.of(2026, 9, 28);
+        Profile p = new Profile();
+        assertFalse(p.isComplete());
+        assertNotNull(p.validate(today));
+        p.name = "Asha Devi";
+        assertNull(p.validate(today));
+        p.dateOfBirth = "1962-10-01";
+        assertEquals(Integer.valueOf(63), p.age(today));
+        assertEquals("Asha", p.firstName());
+        p.sex = "Female";
+        assertEquals("Asha Devi, 63 y, Female", p.summary(today));
+        p.dateOfBirth = "2030-01-01";
+        assertNotNull(p.validate(today));
+        p.dateOfBirth = "01/02/1960";
+        assertNotNull(p.validate(today));
+        p.dateOfBirth = "1962-10-01";
+        p.phone = "+91 98765 43210";
+        assertNull(p.validate(today));
+        p.phone = "call me";
+        assertNotNull(p.validate(today));
+        p.phone = "";
+        p.allergies = "Penicillin";
+        p.conditions = "Type 2 diabetes";
+
+        AppData d = new AppData();
+        d.profile = p;
+        d.settings.theme = "dark";
+        AppData back = JsonCodec.fromJson(JsonCodec.toJson(d));
+        assertEquals("Asha Devi", back.profile.name);
+        assertEquals("Penicillin", back.profile.allergies);
+        assertEquals("dark", back.settings.theme);
+
+        AdherenceCalculator.Report r = AdherenceCalculator.compute(d, today.atStartOfDay(), today.atTime(12, 0));
+        String text = AdherenceCalculator.toText(d, r);
+        assertTrue(text.contains("Patient: Asha Devi, 63 y, Female"));
+        assertTrue(text.contains("Allergies: Penicillin"));
+    }
+
+    // ---------------------------------------------------------------- follow-ups and emergency
+
+    @Test public void appointmentsRemindersNextAndRoundTrip() throws Exception {
+        LocalDateTime now = t(2026, 9, 28, 9, 0);
+        Appointment a = new Appointment();
+        a.when = "2026-10-05 10:30";
+        a.doctor = "Dr Sharma";
+        a.place = "City Hospital";
+        assertNull(a.validate(now));
+        assertEquals(Arrays.asList(t(2026, 10, 4, 10, 30), t(2026, 10, 5, 8, 30)), a.reminderTimes(now));
+        assertEquals(1, a.reminderTimes(t(2026, 10, 5, 7, 0)).size());   // day-before reminder already past
+        assertTrue(a.isUpcoming(t(2026, 10, 5, 11, 0)));
+        assertFalse(a.isUpcoming(t(2026, 10, 5, 13, 0)));
+        assertEquals("Dr Sharma, City Hospital", a.who());
+
+        Appointment later = a.copy();
+        later.id = "b";
+        later.when = "2026-11-01 09:00";
+        Appointment done = a.copy();
+        done.id = "c";
+        done.when = "2026-10-01 09:00";
+        done.done = true;
+        AppData d = new AppData();
+        d.appointments.addAll(Arrays.asList(later, a, done));
+        assertSame(a, Appointment.next(d.appointments, now));
+
+        Appointment bad = new Appointment();
+        bad.when = "5 Oct";
+        assertNotNull(bad.validate(now));
+        bad.when = "2026-10-05 10:30";
+        assertNotNull(bad.validate(now)); // no doctor or place
+
+        d.profile.name = "Asha";
+        AppData back = JsonCodec.fromJson(JsonCodec.toJson(d));
+        assertEquals(3, back.appointments.size());
+        assertTrue(back.appointments.get(2).done);
+        assertEquals("City Hospital", back.appointments.get(1).place);
+        String report = AdherenceCalculator.toText(back, AdherenceCalculator.compute(back, now.minusDays(1), now));
+        assertTrue(report.contains("Next doctor follow-up: 2026-10-05 10:30, Dr Sharma, City Hospital"));
+    }
+
+    @Test public void emergencyMessages() {
+        Profile p = new Profile();
+        assertNull(Emergency.number(p));
+        p.name = "Asha Devi";
+        p.conditions = "Type 2 diabetes";
+        p.allergies = "Penicillin";
+        p.emergencyPhone = "+91 91234-56789";
+        assertEquals("+919123456789", Emergency.number(p));
+        String sms = Emergency.smsText(p, 26.1445, 91.7362);
+        assertTrue(sms.startsWith("EMERGENCY: Asha Devi needs help now"));
+        assertTrue(sms.contains("Allergies: Penicillin."));
+        assertTrue(sms.contains("https://maps.google.com/?q=26.144500,91.736200"));
+        assertTrue(Emergency.smsText(p, null, null).contains("Location not available."));
+        assertTrue(Emergency.voiceText(p).contains("Asha Devi needs help urgently"));
+    }
+
+    @Test public void legacyPatientNameMigratesToProfile() throws Exception {
+        AppData d = JsonCodec.fromJson("{\"settings\":{\"patientName\":\"Ravi\"}}");
+        assertTrue(d.profile.isComplete());
+        assertEquals("Ravi", d.profile.name);
     }
 }

@@ -1,8 +1,9 @@
 # MedAdherence (Android)
 
 MedAdherence is a native Android app that helps patients take their medicines on time and
-measures how well they manage it. It is written in plain Java against the Android SDK, uses no
-third-party libraries, and needs no Unity or any account to build.
+measures how well they manage it. It is written in plain Java against the Android SDK. Its only libraries
+are Google ML Kit face and pose detection, which run on the phone, and it needs no Unity or any
+account to build.
 
 ## Download
 
@@ -19,6 +20,67 @@ To install it:
    the same key.
 
 ## What it does
+
+- **Patient profile first.** On first launch the patient creates a profile, and nothing else is
+  available until the name is saved. The profile holds:
+  - name, date of birth and sex
+  - phone number
+  - conditions and allergies
+  - doctor or pharmacy
+  - emergency contact
+
+  It is shown at the top of every adherence report and can be edited from the avatar in the top
+  corner.
+- **Face scan in the profile.** Profile set-up includes a face scan using on-device face
+  detection. It guides the patient ("move closer", "look straight at the camera", "keep your eyes
+  open", "more light") and captures automatically once exactly one steady, frontal face is in view.
+  The photo and a face-geometry signature stay on the phone.
+- **AI-checked observed doses.** Google ML Kit face and pose detection runs on the phone, with no
+  internet needed and nothing uploaded. It checks each step of a camera-observed dose:
+  - a face looking at the camera that matches the enrolled face
+  - a hand raised with the medicine
+  - the hand at an open mouth
+  - drinking with the head tilted back
+  - the mouth held wide open at the end
+
+  Across the whole session it also needs a blink, which proves a live person rather than a photo.
+  Each step ends as soon as the AI confirms it, or after 12 seconds, and the screen shows what is
+  still missing. If every check passes, the dose is auto-verified. Otherwise the pharmacist reviews
+  the step photos next to the enrolled face.
+
+  Limits: this confirms a live, matching face and the right gestures, but no camera app can prove a
+  tablet was actually swallowed. The face match is a simple geometry comparison, not biometric
+  recognition, which is why failures go to the pharmacist rather than being rejected outright.
+- **Voice guidance.** Once the patient accepts a dose, the phone speaks, using its own
+  text-to-speech in the phone's language:
+  - after "I took it", it reads out what to take and confirms the dose is recorded
+  - in camera mode, it reads each step, says "Good" when a step is confirmed, and says what it still
+    needs to see
+
+  Voice guidance can be switched off under Pharmacist → Settings.
+- **Medicine photos.** When adding a medicine, take a photo of the pack or tablet with the phone
+  camera, or pick one from the gallery. At dose time the photo appears in the alarm notification
+  and fills the ringing screen, next to the drug name, dose and instructions, so the patient takes
+  the right tablet.
+- **Doctor follow-ups.** The Doctor tab stores each visit's date and time, doctor, hospital and
+  purpose, with quick buttons for 1 week, 2 weeks, 1 month or 3 months ahead. The phone reminds
+  the patient the day before and 2 hours before. The next visit appears on Today and in the
+  shared report, and visits can be marked done.
+- **SOS emergency button.** The red SOS button at the top of every screen starts a 5-second
+  countdown with a big Cancel, so an accidental tap does nothing. Then the app:
+  - texts the emergency contact with the patient's name, conditions, allergies and a map link to
+    their last known location
+  - calls the emergency contact directly
+  - turns on the loudspeaker and repeats an automated voice message asking for help
+
+  Android does not let apps put audio straight into a phone call, so the voice is played through
+  the speaker for the call's microphone to pick up. Most phones carry it, but some filter it out;
+  the SMS always contains the full message. The call, SMS and location permissions are asked for
+  when the emergency contact is saved, so an emergency is not held up by permission dialogs.
+- **Modern, easy-to-read design.** Large text and buttons, rounded cards and an icon bottom bar.
+  The Today screen leads with the next or due medicine and a big **I took it** button, followed by
+  a progress ring for the day. There is a light and a dark theme, which follows the phone by
+  default and can be changed under Pharmacist → Settings → Appearance.
 
 - **Rings the phone at dose times.** A full-screen alarm appears over the lock screen and keeps
   sounding until the patient taps **Taken**, **Snooze** or **Skip**. If nobody answers, it rings
@@ -72,9 +134,11 @@ gradle -p MedAdherenceAndroid testDebugUnitTest assembleDebug
 
 ```
 app/src/main/java/com/chemrob/medadherence/
-  core/    plain Java: schedule, adherence, regimen parser, stock, camera-frame checks, JSON (unit-tested)
+  core/    plain Java: schedule, adherence, regimen parser, stock, AI intake rules, face signature, JSON (unit-tested)
   alarm/   AlarmManager scheduling, alarm receiver, boot receiver, ringing notification
-  ui/      MainActivity (all tabs), AlarmActivity (lock-screen ringing), ObserveActivity (camera)
+  ui/      MainActivity (profile + all tabs), EmergencyActivity (SOS), FaceEnrollActivity (face scan),
+           Vision (ML Kit wrapper), Voice (spoken guidance), AlarmActivity (lock-screen ringing with drug photo),
+           ObserveActivity (observed-dose camera), PhotoActivity (medicine photo), Ui (theme and widgets)
   Store.java   the JSON data file in app-private storage
 app/src/test/  JUnit tests for core/
 ```

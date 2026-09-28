@@ -37,7 +37,9 @@ import com.chemrob.medadherence.core.AppData;
 import com.chemrob.medadherence.core.DoseKey;
 import com.chemrob.medadherence.core.DoseRecord;
 import com.chemrob.medadherence.core.DoseStatus;
-import com.chemrob.medadherence.core.FrameAnalysis;
+import com.chemrob.medadherence.core.FaceSignature;
+import com.chemrob.medadherence.core.FrameObs;
+import com.chemrob.medadherence.core.IntakeRules;
 import com.chemrob.medadherence.core.Medication;
 import com.chemrob.medadherence.core.ScheduleEngine;
 
@@ -50,25 +52,24 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Observed-dose mode: the front camera watches the patient take the medicine.
- * Five guided steps; each is checked for light, a person in view and live movement, and a
- * photo is kept as evidence. All steps pass = auto-verified; otherwise the pharmacist reviews.
- * Uses the long-standing android.hardware.Camera API so no support libraries are needed.
+ * Observed-dose mode: the front camera watches the patient take the medicine while on-device AI
+ * (ML Kit face + pose detection, see {@link Vision}) checks each guided step: a live, matching face,
+ * the medicine shown, hand to an open mouth, drinking with the head tilted back and an empty open
+ * mouth. A photo is kept for every step. All checks pass = auto-verified; otherwise the pharmacist
+ * reviews the photos next to the enrolled face.
  */
 @SuppressWarnings("deprecation")
 public class ObserveActivity extends Activity implements SurfaceHolder.Callback, Camera.PreviewCallback {
     private static final String TAG = "MedAdherence";
-    private static final String[] STEPS = {
-            "Look at the camera so your face is in the frame",
-            "Hold the medicine up to the camera",
-            "Put the medicine in your mouth",
-            "Drink water and swallow",
-            "Open your mouth to show it is empty",
-    };
-    private static final long STEP_MS = 6000, SAMPLE_MS = 200;
+    private static final IntakeRules.Step[] STEPS = IntakeRules.Step.values();
+    /** Each step runs at least MIN and at most MAX; it ends early once the AI confirms it. */
+    private static final long STEP_MIN_MS = 3500, STEP_MAX_MS = 12000;
     private static final int REQ_CAMERA = 7;
 
-    private final FrameAnalysis.Criteria criteria = new FrameAnalysis.Criteria();
+    private Vision vision;
+    private double[] enrolledFace;
+    private final List<FrameObs> stepFrames = new ArrayList<>(), allFrames = new ArrayList<>();
+    private final List<IntakeRules.StepResult> results = new ArrayList<>();
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private String key;
@@ -81,11 +82,9 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
 
     // step state
     private int step = -1;
-    private long stepStart, lastSample;
-    private byte[] prevLuma, lastFrame;
-    private double peakMotion, peakSkin, brightSum;
-    private int samples, passed;
-    private double livenessSum, presenceSum;
+    private long stepStart;
+    private byte[] lastFrame;
+    private boolean spokeHint;
     private final List<String> evidence = new ArrayList<>();
     private boolean finished;
 
@@ -119,6 +118,8 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         med = key == null ? null : Store.get(this).findMed(DoseKey.medId(key));
         if (med == null) { finish(); return; }
         Notifications.cancel(this, key); // stop the ringing while the patient is on camera
+        enrolledFace = Store.get(this).profile.faceSignature;
+        vision = new Vision(true);
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -129,7 +130,7 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         top.setBackgroundColor(Color.argb(170, 0, 0, 0));
         int p = Ui.dp(this, 20);
         top.setPadding(p, Ui.dp(this, 36), p, p);
-        Ui.text(top, "Observed dose: " + med.name + " " + med.dose, 15, Color.parseColor("#9FE3D0"), true);
+        Ui.text(top, "Observed dose: " + med.name + " " + med.dose, 15, Color.parseColor("#D0D3FF"), true);
         counter = Ui.text(top, "", 14, Color.WHITE, false);
         instruction = Ui.text(top, "Starting camera...", 24, Color.WHITE, true);
         status = Ui.text(top, "", 14, Color.WHITE, false);
@@ -217,46 +218,53 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         step++;
         if (step >= STEPS.length) { complete(); return; }
         counter.setText(String.format(Locale.ROOT, "Step %d of %d", step + 1, STEPS.length));
-        instruction.setText(STEPS[step]);
+        instruction.setText(STEPS[step].instruction);
+        if (step == 0) Voice.say(this, "Let's take your " + med.name + " together. Follow my instructions. " + STEPS[0].instruction);
+        else Voice.then(this, STEPS[step].instruction);
+        spokeHint = false;
         stepStart = System.currentTimeMillis();
-        prevLuma = null;
-        peakMotion = peakSkin = brightSum = 0;
-        samples = 0;
-        handler.postDelayed(this::endStep, STEP_MS);
+        stepFrames.clear();
         handler.post(this::tick);
     }
 
+    /** Live feedback, and ends the step as soon as the AI has seen what it needs. */
     private void tick() {
         if (finished || step < 0 || step >= STEPS.length) return;
-        long left = STEP_MS - (System.currentTimeMillis() - stepStart);
-        status.setText(String.format(Locale.ROOT, "%s person in view    %s movement    %s light      %ds",
-                mark(peakSkin >= criteria.minSkin), mark(peakMotion >= criteria.minMotion),
-                mark(samples > 0 && brightSum / samples >= criteria.minBrightness), Math.max(0, (left + 999) / 1000)));
-        if (left > 0) handler.postDelayed(this::tick, 250);
-    }
+        long elapsed = System.currentTimeMillis() - stepStart;
+        IntakeRules.StepResult r = IntakeRules.evaluate(STEPS[step], stepFrames);
+        FrameObs last = stepFrames.isEmpty() ? null : stepFrames.get(stepFrames.size() - 1);
+        StringBuilder sb = new StringBuilder();
+        sb.append(last != null && last.oneFace() ? "[OK] face" : "[ .. ] face");
+        if (enrolledFace != null && last != null && last.signature != null)
+            sb.append(FaceSignature.matches(enrolledFace, last.signature) ? "   [OK] it's you" : "   [ .. ] face match");
+        if (r.passed) sb.append("\n[OK] step confirmed");
+        else if (elapsed > 2000 && !r.missing.isEmpty()) sb.append("\nNeed: ").append(String.join(", ", r.missing));
+        if (!r.passed && !spokeHint && elapsed > 6000 && !r.missing.isEmpty()) {
+            spokeHint = true;
+            Voice.say(this, "I still need to see: " + String.join(", and ", r.missing) + ".");
+        }
+        status.setText(sb.toString());
 
-    private static String mark(boolean ok) { return ok ? "[OK]" : "[ .. ]"; }
+        if ((r.passed && elapsed >= STEP_MIN_MS) || elapsed >= STEP_MAX_MS) { endStep(r); return; }
+        handler.postDelayed(this::tick, 250);
+    }
 
     @Override
     public void onPreviewFrame(byte[] data, Camera cam) {
-        long now = System.currentTimeMillis();
-        if (step < 0 || finished || now - lastSample < SAMPLE_MS || data == null) return;
-        lastSample = now;
+        if (step < 0 || finished || data == null || vision.busy()) return;
         lastFrame = data;
-        byte[] luma = FrameAnalysis.sampleLuma(data, previewW, previewH, Math.max(1, previewW / 64));
-        brightSum += FrameAnalysis.meanLuma(luma);
-        samples++;
-        if (prevLuma != null) peakMotion = Math.max(peakMotion, FrameAnalysis.motion(prevLuma, luma));
-        peakSkin = Math.max(peakSkin, FrameAnalysis.skinRatioNv21(data, previewW, previewH, 0.6));
-        prevLuma = luma;
+        final int s = step;
+        vision.analyze(data, previewW, previewH, cameraOrientation, System.currentTimeMillis(), (obs, face) -> {
+            if (finished || s != step) return;
+            stepFrames.add(obs);
+            allFrames.add(obs);
+        });
     }
 
-    private void endStep() {
+    private void endStep(IntakeRules.StepResult r) {
         if (finished) return;
-        double bright = samples > 0 ? brightSum / samples : 0;
-        if (criteria.stepPassed(bright, peakMotion, peakSkin)) passed++;
-        livenessSum += Math.min(1, peakMotion / criteria.minMotion);
-        presenceSum += Math.min(1, peakSkin / criteria.minSkin);
+        if (r.passed) Voice.say(this, "Good.");
+        results.add(r);
         String file = saveSnapshot(step + 1);
         if (file != null) evidence.add(file);
         nextStep();
@@ -287,22 +295,24 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
     private void complete() {
         finished = true;
         releaseCamera();
+        IntakeRules.Verdict v = IntakeRules.verdict(results, allFrames, enrolledFace);
         AppData data = Store.get(this);
         DoseRecord rec = ScheduleEngine.record(data, key, DoseStatus.TAKEN, LocalDateTime.now());
         if (rec != null) {
-            rec.verification = criteria.verdict(passed, STEPS.length, true);
-            rec.livenessScore = livenessSum / STEPS.length;
-            rec.presenceScore = presenceSum / STEPS.length;
+            rec.verification = v.verification;
+            rec.livenessScore = v.live ? 1 : 0;
+            rec.presenceScore = Double.isNaN(v.faceMatch) ? 0 : v.faceMatch;
             rec.evidence = new ArrayList<>(evidence);
-            rec.note = passed + "/" + STEPS.length + " observation steps confirmed";
+            rec.note = v.summary;
         }
         Store.save(this);
         AlarmScheduler.onRecorded(this, key);
-        boolean ok = rec != null && rec.verification == com.chemrob.medadherence.core.Verification.AUTO_VERIFIED;
-        counter.setText(passed + "/" + STEPS.length + " steps confirmed");
-        instruction.setText(ok ? "Dose verified. Well done!" : "Dose recorded. Your pharmacist will review the photos.");
-        status.setText("");
-        handler.postDelayed(this::finish, 2500);
+        counter.setText(v.stepsPassed + "/" + v.stepsTotal + " steps confirmed");
+        instruction.setText(v.verification == com.chemrob.medadherence.core.Verification.AUTO_VERIFIED
+                ? "Dose verified. Well done!" : "Dose recorded. Your pharmacist will review the photos.");
+        status.setText(v.summary);
+        Voice.then(this, instruction.getText().toString());
+        handler.postDelayed(this::finish, 3000);
     }
 
     /** Cancelled: the dose is still owed, so it rings again after the snooze interval. */
@@ -311,6 +321,7 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         finished = true;
         handler.removeCallbacksAndMessages(null);
         releaseCamera();
+        Voice.say(this, "Cancelled. I will remind you again soon.");
         AppData data = Store.get(this);
         com.chemrob.medadherence.core.ScheduledDose dose = ScheduleEngine.find(data, key);
         if (dose != null && ScheduleEngine.isDueNow(data, dose, LocalDateTime.now()))
@@ -325,6 +336,7 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
     protected void onDestroy() {
         handler.removeCallbacksAndMessages(null);
         releaseCamera();
+        if (vision != null) vision.close();
         super.onDestroy();
     }
 }
