@@ -1,0 +1,7 @@
+# Paste into Pharmacist > Load a full regimen
+# Name | Dose | Times or OD/BD/TDS/QID/HS/Q8H/WEEKLY | Duration (days, 2w, 6m, 0 = ongoing) | Start (today/tomorrow/yyyy-MM-dd) | Observed yes/no | Instructions
+Metformin | 500 mg, 1 tablet | BD | 0 | today | no | after food
+Amlodipine | 5 mg | 08:00 | 0 | today | no |
+Amoxicillin | 500 mg capsule | TDS | 7 | today | no | complete the full course
+Rifampicin + Isoniazid | 2 tablets | 07:00 | 6m | today | yes | empty stomach, 30 min before breakfast
+Methotrexate | 7.5 mg | WEEKLY 09:00 | 12w | today | no | same day every week

@@ -1,0 +1,6 @@
+{
+    "name": "MedAdherence.Core",
+    "rootNamespace": "MedAdherence.Core",
+    "references": [],
+    "noEngineReferences": true
+}

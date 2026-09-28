@@ -1,0 +1,11 @@
+{
+    "name": "MedAdherence.Editor",
+    "rootNamespace": "MedAdherence.EditorTools",
+    "references": [
+        "MedAdherence",
+        "MedAdherence.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ]
+}
