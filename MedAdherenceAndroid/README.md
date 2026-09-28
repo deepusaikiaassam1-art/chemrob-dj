@@ -68,15 +68,14 @@ To install it:
   shared report, and visits can be marked done.
 - **SOS emergency button.** The red SOS button at the top of every screen starts a 5-second
   countdown with a big Cancel, so an accidental tap does nothing. Then the app:
-  - texts the emergency contact with the patient's name, conditions, allergies and a map link to
-    their last known location
-  - calls the emergency contact directly
+  - calls the emergency contact directly, with no tap needed
   - turns on the loudspeaker and repeats an automated voice message asking for help
+  - when the call ends, opens the messaging app with the patient's name, conditions, allergies and
+    a map link to their location filled in; the patient taps Send
 
-  Android does not let apps put audio straight into a phone call, so the voice is played through
-  the speaker for the call's microphone to pick up. Most phones carry it, but some filter it out;
-  the SMS always contains the full message. The call, SMS and location permissions are asked for
-  when the emergency contact is saved, so an emergency is not held up by permission dialogs.
+  The app does not request SMS permission, because Google Play Protect blocks installing apps from
+  outside the Play Store that ask for it. Android also does not let apps put audio straight into a
+  phone call, so the voice is played through the speaker for the call's microphone to pick up.
 - **Modern, easy-to-read design.** Large text and buttons, rounded cards and an icon bottom bar.
   The Today screen leads with the next or due medicine and a big **I took it** button, followed by
   a progress ring for the day. There is a light and a dark theme, which follows the phone by
@@ -126,8 +125,8 @@ You need JDK 17 and the Android SDK. Either open this folder in Android Studio a
 build from the command line:
 
 ```
-gradle -p MedAdherenceAndroid testDebugUnitTest assembleDebug
-# APK: MedAdherenceAndroid/app/build/outputs/apk/debug/app-debug.apk
+gradle -p MedAdherenceAndroid testDebugUnitTest assembleRelease
+# APK: MedAdherenceAndroid/app/build/outputs/apk/release/app-release.apk
 ```
 
 ## Code layout
@@ -143,6 +142,37 @@ app/src/main/java/com/chemrob/medadherence/
 app/src/test/  JUnit tests for core/
 ```
 
-The signing key `app/medadherence-debug.keystore` (password `android`) is committed on purpose, so
-that downloaded builds update in place. Do not use it for a Play Store release; create a private
-key for that.
+## Signing
+
+The published APK is a release build: not debuggable, with code shrinking. It is signed like this:
+
+- **Your own key (recommended).** Create one once, keep it private and back it up. Every future
+  update must be signed with the same key.
+
+  ```
+  keytool -genkeypair -v -keystore medadherence-release.jks -storetype PKCS12 \
+    -alias medadherence -keyalg RSA -keysize 4096 -validity 10000
+  base64 -w0 medadherence-release.jks > keystore.b64      # Windows PowerShell:
+  # [Convert]::ToBase64String([IO.File]::ReadAllBytes("medadherence-release.jks")) > keystore.b64
+  ```
+
+  Add these repository secrets under Settings → Secrets and variables → Actions:
+  - `RELEASE_KEYSTORE_BASE64`: the contents of `keystore.b64`
+  - `RELEASE_KEYSTORE_PASSWORD`
+  - `RELEASE_KEY_ALIAS` (`medadherence`)
+  - `RELEASE_KEY_PASSWORD`
+
+  From then on, the workflow signs every build with your key.
+- **Otherwise,** builds are signed with the shared test key `app/medadherence-debug.keystore`
+  (password `android`), which is committed so builds update in place.
+
+Switching keys means the new build will not install over the old one: uninstall the app first,
+and that deletes its data. Set up your own key before you start using the app for real.
+
+To sign an APK by hand:
+
+```
+zipalign -p -f -v 4 in.apk aligned.apk
+apksigner sign --ks medadherence-release.jks --ks-key-alias medadherence --out signed.apk aligned.apk
+apksigner verify --verbose --print-certs signed.apk
+```

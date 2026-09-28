@@ -12,12 +12,10 @@ import android.location.LocationManager;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
-import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.WindowManager;
@@ -28,17 +26,16 @@ import com.chemrob.medadherence.Store;
 import com.chemrob.medadherence.core.Emergency;
 import com.chemrob.medadherence.core.Profile;
 
-import java.util.ArrayList;
 import java.util.Locale;
 
 /**
- * SOS: after a short countdown (so an accidental tap can be cancelled) it texts the emergency
- * contact with the patient's details and location, calls them directly, and plays an automated
- * voice message through the loudspeaker so it can be heard on the call.
+ * SOS: after a short countdown (so an accidental tap can be cancelled) it calls the emergency
+ * contact directly, plays an automated voice message through the loudspeaker so it can be heard on
+ * the call, and then opens the messaging app with the patient's details and location ready to send.
  *
  * Android does not let ordinary apps inject audio into a phone call, so the voice is played on the
  * speaker for the call's microphone to pick up. On most phones the other person hears it, but some
- * phones filter it out; the SMS always carries the full message.
+ * phones filter it out; the SMS carries the full message.
  */
 public class EmergencyActivity extends Activity implements TextToSpeech.OnInitListener {
     private static final String TAG = "MedAdherence";
@@ -53,12 +50,16 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
     private TextToSpeech tts;
     private boolean ttsReady;
     private Profile profile;
+    private LinearLayout root;
+    private android.widget.Button cancelButton;
+    private String smsText;
+    private boolean callStarted, smsOpened;
 
     public static Intent intent(Context c) { return new Intent(c, EmergencyActivity.class); }
 
     /** Permissions the SOS button needs; asked for up front so an emergency is not delayed by dialogs. */
     public static String[] permissions() {
-        return new String[]{Manifest.permission.CALL_PHONE, Manifest.permission.SEND_SMS,
+        return new String[]{Manifest.permission.CALL_PHONE,
                 Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
     }
 
@@ -69,7 +70,7 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         profile = Store.get(this).profile;
 
-        LinearLayout root = Ui.vbox(this);
+        root = Ui.vbox(this);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setBackgroundColor(Color.parseColor("#B3261E"));
         int p = Ui.dp(this, 24);
@@ -78,13 +79,14 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
         title.setGravity(Gravity.CENTER);
         String number = Emergency.number(profile);
         String who = profile.emergencyName.trim().isEmpty() ? (number == null ? "" : number) : profile.emergencyName.trim();
-        status = Ui.text(root, number == null ? "No emergency contact is set." : "Calling and texting " + who + " in", 20, Color.WHITE, false);
+        status = Ui.text(root, number == null ? "No emergency contact is set." : "Calling " + who + " in", 20, Color.WHITE, false);
         status.setGravity(Gravity.CENTER);
         big = Ui.text(root, "", 120, Color.WHITE, true);
         big.setGravity(Gravity.CENTER);
         big.setTypeface(Typeface.create(Ui.medium(), Typeface.BOLD));
         root.addView(new android.view.View(this), new LinearLayout.LayoutParams(1, 0, 1));
-        Ui.button(root, "Cancel", Color.WHITE, v -> cancel()).setTextColor(Color.parseColor("#B3261E"));
+        cancelButton = Ui.button(root, "Cancel", Color.WHITE, v -> cancel());
+        cancelButton.setTextColor(Color.parseColor("#B3261E"));
         setContentView(root);
 
         if (number == null) {
@@ -98,8 +100,7 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
     }
 
     private boolean hasAll() {
-        return checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
-                && checkSelfPermission(Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED;
+        return checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
@@ -122,36 +123,62 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
         finish();
     }
 
+    /**
+     * Calls straight away (no tap needed, so it works even if the patient cannot press anything),
+     * with the voice message on the loudspeaker. When the call ends and the patient is back here,
+     * the messaging app opens with the emergency text and location filled in; they tap Send.
+     * The app does not send SMS itself: that permission makes Play Protect block sideloaded apps.
+     */
     private void send() {
         sent = true;
         String number = Emergency.number(profile);
         big.setText("SOS");
         Location loc = lastLocation();
-        String sms = Emergency.smsText(profile, loc == null ? null : loc.getLatitude(), loc == null ? null : loc.getLongitude());
-
-        boolean smsOk = false;
-        if (checkSelfPermission(Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
-            try {
-                SmsManager sm = Build.VERSION.SDK_INT >= 31 ? getSystemService(SmsManager.class) : SmsManager.getDefault();
-                ArrayList<String> parts = sm.divideMessage(sms);
-                sm.sendMultipartTextMessage(number, null, parts, null, null);
-                smsOk = true;
-            } catch (Exception e) {
-                Log.e(TAG, "SMS failed", e);
-            }
-        }
-        if (!smsOk) {
-            // Fall back to the messaging app with the text filled in.
-            Intent i = new Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + number)).putExtra("sms_body", sms);
-            try { startActivity(i); } catch (Exception ignored) { }
-        }
+        smsText = Emergency.smsText(profile, loc == null ? null : loc.getLatitude(), loc == null ? null : loc.getLongitude());
 
         boolean canCall = checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED;
-        status.setText((smsOk ? "Message sent. " : "") + (canCall ? "Calling now..." : "Tap call to ring them."));
+        status.setText(canCall ? "Calling now..." : "Tap the call button to ring them.");
         Intent call = new Intent(canCall ? Intent.ACTION_CALL : Intent.ACTION_DIAL, Uri.parse("tel:" + number));
-        try { startActivity(call); } catch (Exception e) { Log.e(TAG, "Call failed", e); }
-
+        try {
+            startActivity(call);
+            callStarted = true;
+        } catch (Exception e) {
+            Log.e(TAG, "Call failed", e);
+            openSms();
+        }
+        showAfterButtons(number);
         handler.postDelayed(this::speak, VOICE_DELAY_MS);
+    }
+
+    /** Opens the messaging app with the emergency text and location filled in. */
+    private void openSms() {
+        if (smsText == null) return;
+        smsOpened = true;
+        Intent i = new Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + Emergency.number(profile))).putExtra("sms_body", smsText);
+        try { startActivity(i); } catch (Exception e) { Log.e(TAG, "No messaging app", e); }
+    }
+
+    private void showAfterButtons(String number) {
+        cancelButton.setVisibility(android.view.View.GONE);
+        Ui.button(root, "Send location by SMS", Color.WHITE, v -> openSms()).setTextColor(Color.parseColor("#B3261E"));
+        Ui.button(root, "Call again", Color.WHITE, v -> {
+            Intent call = new Intent(checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
+                    ? Intent.ACTION_CALL : Intent.ACTION_DIAL, Uri.parse("tel:" + number));
+            try { startActivity(call); } catch (Exception ignored) { }
+        }).setTextColor(Color.parseColor("#B3261E"));
+        Ui.button(root, "Close", Color.parseColor("#8C1D18"), v -> finish());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Back from the call: offer the SMS with the location straight away (once).
+        if (sent && callStarted && !smsOpened) {
+            handler.removeCallbacksAndMessages(null);
+            if (tts != null) tts.stop();
+            status.setText("Now send your location: tap Send in the message.");
+            openSms();
+        }
     }
 
     @Override

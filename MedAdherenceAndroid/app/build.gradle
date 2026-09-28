@@ -10,8 +10,8 @@ android {
         applicationId 'com.chemrob.medadherence'
         minSdk 26
         targetSdk 34
-        versionCode 5
-        versionName '1.3.1'
+        versionCode 6
+        versionName '1.4.0'
 
         // Phones only: ML Kit's native AI libraries are large, and the x86 copies only serve PC emulators.
         ndk {
@@ -27,14 +27,24 @@ android {
     }
 
     signingConfigs {
-        // A fixed key committed with the project (same idea as Android's own debug key), so every
-        // downloaded build installs over the previous one and the patient keeps their data.
-        // Not for Play Store publishing: create a private release key for that.
+        // Fixed test key committed with the project; used for debug builds, and for release builds
+        // until your own key is configured.
         shared {
             storeFile file('medadherence-debug.keystore')
             storePassword 'android'
             keyAlias 'medadherence'
             keyPassword 'android'
+        }
+        // Your private release key. CI provides it from GitHub secrets (see .github/workflows/android-apk.yml);
+        // locally, set the same environment variables. Never commit the keystore itself.
+        release {
+            def ks = System.getenv('MEDADHERENCE_KEYSTORE')
+            if (ks != null && new File(ks).exists()) {
+                storeFile file(ks)
+                storePassword System.getenv('MEDADHERENCE_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('MEDADHERENCE_KEY_ALIAS')
+                keyPassword System.getenv('MEDADHERENCE_KEY_PASSWORD')
+            }
         }
     }
 
@@ -43,8 +53,11 @@ android {
             signingConfig signingConfigs.shared
         }
         release {
-            minifyEnabled false
-            signingConfig signingConfigs.shared
+            // Not debuggable; unused code and resources are removed (smaller, and treated as a normal app).
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release.storeFile != null ? signingConfigs.release : signingConfigs.shared
         }
     }
 
