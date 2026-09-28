@@ -80,6 +80,13 @@
             android:screenOrientation="portrait"
             android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
 
+        <!-- Read-only access to files the patient shares (the PDF report). -->
+        <provider
+            android:name=".ui.ShareProvider"
+            android:authorities="com.chemrob.medadherence.share"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
         <receiver
             android:name=".alarm.AlarmReceiver"
             android:exported="false" />

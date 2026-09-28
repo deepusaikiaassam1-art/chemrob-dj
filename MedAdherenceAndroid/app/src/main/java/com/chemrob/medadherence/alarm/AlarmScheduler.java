@@ -11,6 +11,7 @@ import android.net.Uri;
 import com.chemrob.medadherence.Store;
 import com.chemrob.medadherence.core.AppData;
 import com.chemrob.medadherence.core.Appointment;
+import com.chemrob.medadherence.core.Caregiver;
 import com.chemrob.medadherence.core.DoseStatus;
 import com.chemrob.medadherence.core.ScheduleEngine;
 import com.chemrob.medadherence.core.ScheduledDose;
@@ -32,6 +33,7 @@ public final class AlarmScheduler {
     /** Unanswered doses ring again this often, at most MAX_RINGS times in total. */
     public static final int REPEAT_MINUTES = 10;
     static final String APPT_PREFIX = "APPT|";
+    static final String CARE_CHECK = "CARE|check", CARE_SUMMARY = "CARE|summary";
     static final int MAX_RINGS = 4;
     static final int HORIZON_DAYS = 7;
 
@@ -89,10 +91,25 @@ public final class AlarmScheduler {
                 scheduled.add(key);
             }
         }
+        // Caregiver alerts: a check when the next dose could become missed, and the evening summary.
+        if (!data.profile.caregiverNumber().isEmpty()) {
+            LocalDateTime check = data.settings.caregiverMissedAlerts ? Caregiver.nextCheck(data, now) : null;
+            if (check != null) { setLoose(ctx, am, CARE_CHECK, check); scheduled.add(CARE_CHECK); }
+            if (data.settings.caregiverDailySummary) {
+                setLoose(ctx, am, CARE_SUMMARY, Caregiver.nextSummary(data, now));
+                scheduled.add(CARE_SUMMARY);
+            }
+        }
         // Forget ring counters of doses that are no longer pending.
         for (String k : p.getAll().keySet())
             if (k.startsWith(K_RINGS) && !pending.contains(k.substring(K_RINGS.length()))) ed.remove(k);
         ed.putStringSet(K_SCHEDULED, scheduled).apply();
+    }
+
+    /** Alarms that may run a few minutes late (no exact-alarm needed). */
+    private static void setLoose(Context ctx, AlarmManager am, String key, LocalDateTime at) {
+        long ms = at.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, fireIntent(ctx, key, PendingIntent.FLAG_UPDATE_CURRENT));
     }
 
     static void countRing(Context ctx, String key) {

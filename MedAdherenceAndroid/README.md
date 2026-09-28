@@ -2,8 +2,9 @@
 
 MedAdherence is a native Android app that helps patients take their medicines on time and
 measures how well they manage it. It is written in plain Java against the Android SDK. Its only libraries
-are Google ML Kit face and pose detection, which run on the phone, and it needs no Unity or any
-account to build.
+are Google ML Kit face and pose detection and TensorFlow Lite (for face recognition), which all run
+on the phone, and it needs no Unity or any account to build. The app speaks English, Hindi, Bengali
+and Assamese.
 
 ## Download
 
@@ -31,13 +32,28 @@ To install it:
 
   It is shown at the top of every adherence report and can be edited from the avatar in the top
   corner.
-- **Face scan in the profile.** Profile set-up includes a face scan using on-device face
-  detection. It guides the patient ("move closer", "look straight at the camera", "keep your eyes
-  open", "more light") and captures automatically once exactly one steady, frontal face is in view.
-  The photo and a face-geometry signature stay on the phone.
+- **Face recognition, like a phone's face unlock.** Profile set-up includes a short guided scan:
+  1. look straight at the camera
+  2. turn the head a little to one side
+  3. turn it to the other side
+  4. blink
+  5. look straight again
+
+  Spoken prompts guide each step, and the scan restarts if a second face appears or the views
+  don't match. A face-recognition model then records a "face fingerprint" from each angle.
+
+  The model is SFace (OpenCV Zoo, Apache 2.0), run with TensorFlow Lite. Each face is first lined
+  up to a standard 112×112 position using five landmarks. The fingerprints and photo stay on the
+  phone.
+
+  On test photos, the same person scored 0.65–0.93 and different people at most 0.27, against a
+  0.40 threshold. The Android camera path gives the same fingerprints as OpenCV's reference code
+  (similarity ≥ 0.99). Existing users see a prompt on Today to scan again.
 - **AI-checked observed doses.** Google ML Kit face and pose detection runs on the phone, with no
   internet needed and nothing uploaded. It checks each step of a camera-observed dose:
-  - a face looking at the camera that matches the enrolled face
+  - a face looking at the camera and turning a little to each side (a flat photo can't do this)
+  - the face recognised as the enrolled patient in at least 70 % of clear views, checked about
+    every 0.7 seconds; frames where a hand or glass covers the face are not counted
   - a hand raised with the medicine
   - the hand at an open mouth
   - drinking with the head tilted back
@@ -48,16 +64,51 @@ To install it:
   still missing. If every check passes, the dose is auto-verified. Otherwise the pharmacist reviews
   the step photos next to the enrolled face.
 
-  Limits: this confirms a live, matching face and the right gestures, but no camera app can prove a
-  tablet was actually swallowed. The face match is a simple geometry comparison, not biometric
-  recognition, which is why failures go to the pharmacist rather than being rejected outright.
+  Limits: this confirms a live, recognised face and the right gestures, but no camera app can prove
+  a tablet was actually swallowed. Recognition can fail in poor light or with a very different
+  look, and a determined person with a video of the patient could fool it. That is why failures go
+  to the pharmacist rather than being rejected outright.
 - **Voice guidance.** Once the patient accepts a dose, the phone speaks, using its own
-  text-to-speech in the phone's language:
+  text-to-speech in the app's language:
   - after "I took it", it reads out what to take and confirms the dose is recorded
   - in camera mode, it reads each step, says "Good" when a step is confirmed, and says what it still
     needs to see
 
-  Voice guidance can be switched off under Pharmacist → Settings.
+  Voice guidance can be switched off under Pharmacist → Settings. If the phone has no voice for the
+  chosen language, it falls back. For Assamese it tries Bengali, then Hindi; any language falls
+  back to English. It speaks the text in the language it can pronounce. Google's text-to-speech
+  often has no Assamese voice, and one can be added in the phone's settings.
+- **Local languages.** English, हिन्दी (Hindi), বাংলা (Bengali) and অসমীয়া (Assamese), including
+  alarms, notifications, the voice, SOS messages and the PDF report. Pick a language on the
+  welcome screen or under Pharmacist → Settings; by default the app follows the phone's language.
+
+  The translations were drafted without a native-speaker review, so please have one checked
+  before relying on it. They live in `app/src/main/assets/i18n/*.json`, keyed by the English text,
+  and a unit test checks that every text is translated and every placeholder is kept.
+- **Caregiver alerts.** Add a caregiver (a family member or nurse), or let the app use the
+  emergency contact. When a dose becomes missed, the phone shows a notification. One tap opens
+  WhatsApp or SMS with the message written ("Asha has missed Metformin 500 mg (08:00)…"), and the
+  patient or family member taps Send.
+
+  An optional evening summary works the same way. Summaries can also be sent from the Adherence
+  tab. The app can't send messages by itself, because it has no SMS permission (see SOS below).
+- **Printable PDF report.** On the Adherence tab, **PDF report** makes an A4 report for the doctor
+  or pharmacist. It contains:
+  - patient details and photo
+  - summary figures with the 80 % rule
+  - a daily chart
+  - a table per medicine
+  - the most recent missed, skipped and late doses
+  - the next visit
+
+  Share it by WhatsApp, e-mail or to a printer, or save it on the phone.
+- **Backup and restore.** Under Pharmacist → Backup and restore, save everything to one file:
+  medicines, dose history, profile, face scan and photos. Put it on Google Drive or a memory card,
+  and restore it on a new phone.
+
+  With a password, the file is encrypted with AES-256-GCM, using a key derived from the password
+  with PBKDF2. A wrong password, a damaged file or a cut-off file is detected, and nothing is
+  changed.
 - **Medicine photos.** When adding a medicine, take a photo of the pack or tablet with the phone
   camera, or pick one from the gallery. At dose time the photo appears in the alarm notification
   and fills the ringing screen, next to the drug name, dose and instructions, so the patient takes
@@ -133,13 +184,17 @@ gradle -p MedAdherenceAndroid testDebugUnitTest assembleRelease
 
 ```
 app/src/main/java/com/chemrob/medadherence/
-  core/    plain Java: schedule, adherence, regimen parser, stock, AI intake rules, face signature, JSON (unit-tested)
+  core/    plain Java (unit-tested): schedule, adherence, regimen parser, stock, AI intake rules,
+           face alignment and matching (FaceMatch, FaceCrop), backup (Backup), caregiver alerts,
+           translations (I18n), JSON
   alarm/   AlarmManager scheduling, alarm receiver, boot receiver, ringing notification
   ui/      MainActivity (profile + all tabs), EmergencyActivity (SOS), FaceEnrollActivity (face scan),
            Vision (ML Kit wrapper), Voice (spoken guidance), AlarmActivity (lock-screen ringing with drug photo),
-           ObserveActivity (observed-dose camera), PhotoActivity (medicine photo), Ui (theme and widgets)
+           ObserveActivity (observed-dose camera), PhotoActivity (medicine photo), Ui (theme and widgets),
+           FaceRecognizer (TensorFlow Lite), PdfReport, ShareProvider (sharing the PDF), Lang (languages)
   Store.java   the JSON data file in app-private storage
-app/src/test/  JUnit tests for core/
+app/src/main/assets/  face-recognition model (with its licence notice) and translations (i18n/)
+app/src/test/  JUnit tests for core/ and the translation files
 ```
 
 ## Signing

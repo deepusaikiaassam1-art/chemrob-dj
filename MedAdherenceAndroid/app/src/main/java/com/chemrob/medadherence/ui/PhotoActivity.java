@@ -24,6 +24,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 
+import static com.chemrob.medadherence.core.I18n.t;
+import static com.chemrob.medadherence.core.I18n.tf;
+
 /**
  * Takes a photo of a medicine (pack, strip or tablet) with the back camera and saves it in app
  * storage. Returns the file path as {@link #EXTRA_PATH}. Uses the platform camera API directly, so
@@ -113,7 +116,7 @@ public class PhotoActivity extends Activity implements SurfaceHolder.Callback {
         if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
             if (holder.getSurface() != null && holder.getSurface().isValid()) open();
         } else {
-            hint.setText("Camera permission is needed to photograph the medicine.");
+            hint.setText(t("Camera permission is needed to photograph the medicine."));
         }
     }
 
@@ -149,14 +152,14 @@ public class PhotoActivity extends Activity implements SurfaceHolder.Callback {
             camera.startPreview();
         } catch (Exception e) {
             Log.e(TAG, "Camera failed", e);
-            hint.setText("The camera could not be opened.");
+            hint.setText(t("The camera could not be opened."));
         }
     }
 
     private void capture() {
         if (camera == null || busy) return;
         busy = true;
-        hint.setText("Saving...");
+        hint.setText(t("Saving..."));
         camera.takePicture(null, null, (data, cam) -> {
             Bitmap raw = BitmapFactory.decodeByteArray(data, 0, data.length);
             String path = null;
@@ -167,7 +170,7 @@ public class PhotoActivity extends Activity implements SurfaceHolder.Callback {
             }
             if (path == null) {
                 busy = false;
-                hint.setText("Could not save the photo. Try again.");
+                hint.setText(t("Could not save the photo. Try again."));
                 cam.startPreview();
                 return;
             }

@@ -35,6 +35,9 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.chemrob.medadherence.core.I18n.t;
+import static com.chemrob.medadherence.core.I18n.tf;
+
 /**
  * Face enrolment for the patient profile, guided like a phone's face unlock: look straight, turn
  * the head a little to each side, blink, and look straight again. On-device face detection checks
@@ -142,7 +145,7 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
         if (req != REQ_CAMERA) return;
         if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
             if (holder.getSurface() != null && holder.getSurface().isValid()) open();
-        } else hint.setText("Camera permission is needed for the face scan.");
+        } else hint.setText(t("Camera permission is needed for the face scan."));
     }
 
     @Override public void surfaceCreated(SurfaceHolder hd) {
@@ -180,7 +183,7 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
             restart(null);
         } catch (Exception e) {
             Log.e(TAG, "Camera failed", e);
-            hint.setText("The camera could not be opened.");
+            hint.setText(t("The camera could not be opened."));
         }
     }
 
@@ -202,8 +205,8 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
         stageStart = System.currentTimeMillis();
         if (stage >= Stage.values().length) { finishScan(); return; }
         Stage s = Stage.values()[stage];
-        hint.setText(s.prompt);
-        progress.setText(String.format(java.util.Locale.ROOT, "Step %d of %d", stage + 1, Stage.values().length));
+        hint.setText(t(s.prompt));
+        progress.setText(tf("Step %d of %d", stage + 1, Stage.values().length));
         for (int i = 0; i < dots.getChildCount(); i++)
             dots.getChildAt(i).setBackground(Ui.rounded(this, i < stage ? Ui.GOOD : i == stage ? Color.WHITE : Color.argb(90, 255, 255, 255), 3));
         if (interrupt) Voice.say(this, s.prompt);
@@ -229,7 +232,7 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
         else if (face.getBoundingBox().width() < uprightW * 0.35) problem = "Move the phone closer";
         if (problem != null) {
             steady = 0;
-            hint.setText(problem);
+            hint.setText(t(problem));
             return;
         }
 
@@ -238,16 +241,16 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
             case STRAIGHT:
             case FINAL:
                 poseOk = Math.abs(o.yaw) <= 10 && Math.abs(o.pitch) <= 12 && (Double.isNaN(o.eyesOpen) || o.eyesOpen >= 0.6);
-                if (!poseOk) hint.setText(Math.abs(o.yaw) > 10 || Math.abs(o.pitch) > 12 ? "Look straight at the camera" : "Keep your eyes open");
+                if (!poseOk) hint.setText(t(Math.abs(o.yaw) > 10 || Math.abs(o.pitch) > 12 ? "Look straight at the camera" : "Keep your eyes open"));
                 break;
             case TURN_A:
                 poseOk = Math.abs(o.yaw) >= 15 && Math.abs(o.yaw) <= 40;
                 if (poseOk) turnSign = Math.signum(o.yaw);
-                else hint.setText(Math.abs(o.yaw) > 40 ? "Not so far - turn back a little" : s.prompt);
+                else hint.setText(t(Math.abs(o.yaw) > 40 ? "Not so far - turn back a little" : s.prompt));
                 break;
             case TURN_B:
                 poseOk = Math.signum(o.yaw) == -turnSign && Math.abs(o.yaw) >= 15 && Math.abs(o.yaw) <= 40;
-                if (!poseOk) hint.setText(Math.abs(o.yaw) > 40 ? "Not so far - turn back a little" : s.prompt);
+                if (!poseOk) hint.setText(t(Math.abs(o.yaw) > 40 ? "Not so far - turn back a little" : s.prompt));
                 break;
             default: // BLINK: eyes seen open, then closed, then open again
                 if (!Double.isNaN(o.eyesOpen)) {
@@ -264,7 +267,7 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
             if ((s == Stage.TURN_A || s == Stage.TURN_B) && elapsed > TURN_TIMEOUT_MS) nextStage(false);
             return;
         }
-        if (++steady < STEADY_FRAMES) { hint.setText("Hold still..."); return; }
+        if (++steady < STEADY_FRAMES) { hint.setText(t("Hold still...")); return; }
         if (s == Stage.STRAIGHT || s == Stage.FINAL) {
             if (o.signature != null) signatures.add(o.signature);
             if (s == Stage.FINAL) lastFace = new Object[]{frame, face.getBoundingBox()};
@@ -309,8 +312,8 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
             return;
         }
         release();
-        hint.setText(recognizer != null ? "Face learned from " + embeddings.size() + " views" : "Face saved");
-        progress.setText("");
+        hint.setText(recognizer != null ? tf("Face learned from %d views", embeddings.size()) : t("Face saved"));
+        progress.setText(t(""));
         Voice.say(this, "Your face is saved. Thank you.");
         Intent result = new Intent().putExtra(EXTRA_PATH, path);
         if (sig != null) result.putExtra(EXTRA_SIGNATURE, sig);

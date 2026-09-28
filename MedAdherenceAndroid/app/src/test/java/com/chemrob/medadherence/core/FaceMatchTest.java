@@ -40,7 +40,10 @@ public class FaceMatchTest {
         assertTrue(FaceMatch.isMatch(0.5));
         assertFalse(FaceMatch.isMatch(0.3));
         assertFalse(FaceMatch.isMatch(Double.NaN));
-        assertEquals(0, FaceMatch.consistency(Arrays.asList(a, d, c)), 1e-9);
+        // Left (a) and right (c) views differ, but each matches the straight view (d).
+        assertEquals(Math.sqrt(0.5), FaceMatch.consistency(Arrays.asList(a, d, c)), 1e-6);
+        // A view that matches nothing (a second person) pulls it to 0.
+        assertEquals(0, FaceMatch.consistency(Arrays.asList(a, b, c)), 1e-9);
         assertTrue(Double.isNaN(FaceMatch.consistency(Arrays.asList(a))));
     }
 

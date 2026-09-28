@@ -52,6 +52,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import static com.chemrob.medadherence.core.I18n.t;
+import static com.chemrob.medadherence.core.I18n.tf;
+
 /**
  * Observed-dose mode: the front camera watches the patient take the medicine while on-device AI
  * (ML Kit face + pose detection, see {@link Vision}) checks each guided step: a live, matching face,
@@ -137,7 +140,7 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         top.setBackgroundColor(Color.argb(170, 0, 0, 0));
         int p = Ui.dp(this, 20);
         top.setPadding(p, Ui.dp(this, 36), p, p);
-        Ui.text(top, "Observed dose: " + med.name + " " + med.dose, 15, Color.parseColor("#D0D3FF"), true);
+        Ui.text(top, tf("Observed dose: %s", (med.name + " " + med.dose).trim()), 15, Color.parseColor("#D0D3FF"), true);
         counter = Ui.text(top, "", 14, Color.WHITE, false);
         instruction = Ui.text(top, "Starting camera...", 24, Color.WHITE, true);
         status = Ui.text(top, "", 14, Color.WHITE, false);
@@ -161,7 +164,7 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
             if (holder.getSurface() != null && holder.getSurface().isValid()) openCamera();
         } else {
-            instruction.setText("Camera permission is needed to observe this dose.");
+            instruction.setText(t("Camera permission is needed to observe this dose."));
             handler.postDelayed(this::cancel, 2500);
         }
     }
@@ -208,7 +211,7 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
             nextStep();
         } catch (Exception e) {
             Log.e(TAG, "Camera failed", e);
-            instruction.setText("The camera could not be opened.");
+            instruction.setText(t("The camera could not be opened."));
             handler.postDelayed(this::cancel, 2500);
         }
     }
@@ -224,10 +227,12 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
     private void nextStep() {
         step++;
         if (step >= STEPS.length) { complete(); return; }
-        counter.setText(String.format(Locale.ROOT, "Step %d of %d", step + 1, STEPS.length));
-        instruction.setText(STEPS[step].instruction);
-        if (step == 0) Voice.say(this, "Let's take your " + med.name + " together. Follow my instructions. " + STEPS[0].instruction);
-        else Voice.then(this, STEPS[step].instruction);
+        counter.setText(tf("Step %d of %d", step + 1, STEPS.length));
+        instruction.setText(t(STEPS[step].instruction));
+        if (step == 0) {
+            Voice.say(this, "Let's take your %s together. Follow my instructions.", med.name);
+            Voice.then(this, STEPS[0].instruction);
+        } else Voice.then(this, STEPS[step].instruction);
         spokeHint = false;
         stepStart = System.currentTimeMillis();
         stepFrames.clear();
@@ -241,19 +246,23 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         IntakeRules.StepResult r = IntakeRules.evaluate(STEPS[step], stepFrames);
         FrameObs last = stepFrames.isEmpty() ? null : stepFrames.get(stepFrames.size() - 1);
         StringBuilder sb = new StringBuilder();
-        sb.append(last != null && last.oneFace() ? "[OK] face" : "[ .. ] face");
+        sb.append(last != null && last.oneFace() ? t("[OK] face") : t("[ .. ] face"));
         if (recognizer != null) {
             if (!Double.isNaN(lastSim))
                 sb.append(FaceMatch.isMatch(lastSim)
-                        ? String.format(Locale.ROOT, "   [OK] it's you (%.0f%%)", lastSim * 100)
-                        : "   [ !! ] not recognised");
+                        ? "   " + tf("[OK] it's you (%.0f%%)", lastSim * 100)
+                        : "   " + t("[ !! ] not recognised"));
         } else if (enrolledFace != null && last != null && last.signature != null)
-            sb.append(FaceSignature.matches(enrolledFace, last.signature) ? "   [OK] it's you" : "   [ .. ] face match");
-        if (r.passed) sb.append("\n[OK] step confirmed");
-        else if (elapsed > 2000 && !r.missing.isEmpty()) sb.append("\nNeed: ").append(String.join(", ", r.missing));
+            sb.append("   ").append(FaceSignature.matches(enrolledFace, last.signature) ? t("[OK] it's you") : t("[ .. ] face match"));
+        if (r.passed) sb.append('\n').append(t("[OK] step confirmed"));
+        else if (elapsed > 2000 && !r.missing.isEmpty()) {
+            List<String> need = new ArrayList<>();
+            for (String m : r.missing) need.add(t(m));
+            sb.append('\n').append(tf("Need: %s", String.join(", ", need)));
+        }
         if (!r.passed && !spokeHint && elapsed > 6000 && !r.missing.isEmpty()) {
             spokeHint = true;
-            Voice.say(this, "I still need to see: " + String.join(", and ", r.missing) + ".");
+            Voice.say(this, "I still need to see: %s.", Voice.list(r.missing));
         }
         status.setText(sb.toString());
 
@@ -277,6 +286,9 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
     /** Every ~0.7 s, checks the face in view against the patient's enrolled face fingerprints. */
     private void recognise(byte[] frame, FrameObs obs, com.google.mlkit.vision.face.Face face) {
         if (recognizer == null || face == null || !obs.oneFace() || recognizer.busy()) return;
+        // Only clear views count: not while a hand or glass covers the face or the head is tilted back.
+        if (Math.abs(obs.yaw) > 25 || Math.abs(obs.pitch) > 20 || obs.mouthOpen > 0.25
+                || (!Double.isNaN(obs.handToMouth) && obs.handToMouth < 0.8)) return;
         if (System.currentTimeMillis() - lastRecognitionAt < 700) return;
         double[] pts = Vision.alignPoints(face);
         if (pts == null) return;
@@ -334,11 +346,12 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         }
         Store.save(this);
         AlarmScheduler.onRecorded(this, key);
-        counter.setText(v.stepsPassed + "/" + v.stepsTotal + " steps confirmed");
-        instruction.setText(v.verification == com.chemrob.medadherence.core.Verification.AUTO_VERIFIED
-                ? "Dose verified. Well done!" : "Dose recorded. Your pharmacist will review the photos.");
+        counter.setText(tf("%d/%d steps confirmed", v.stepsPassed, v.stepsTotal));
+        String done = v.verification == com.chemrob.medadherence.core.Verification.AUTO_VERIFIED
+                ? "Dose verified. Well done!" : "Dose recorded. Your pharmacist will review the photos.";
+        instruction.setText(t(done));
         status.setText(v.summary);
-        Voice.then(this, instruction.getText().toString());
+        Voice.then(this, done);
         handler.postDelayed(this::finish, 3000);
     }
 

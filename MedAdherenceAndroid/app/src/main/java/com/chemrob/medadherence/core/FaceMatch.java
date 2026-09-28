@@ -102,14 +102,20 @@ public final class FaceMatch {
     public static boolean isMatch(double similarity) { return !Double.isNaN(similarity) && similarity >= THRESHOLD; }
 
     /**
-     * Enrolment quality: every view should look like the others (a bad frame or a second person
-     * during enrolment would pull this down). Returns the lowest pairwise similarity.
+     * Enrolment quality: every view must look like at least one other view (a bad frame or a second
+     * person during enrolment pulls this down, while a left and a right head turn of the same person
+     * may differ more from each other than from the straight views). Returns the lowest, over all
+     * views, of that view's best similarity to the others; NaN with fewer than two views.
      */
     public static double consistency(List<float[]> views) {
-        double min = 1;
-        for (int i = 0; i < views.size(); i++)
-            for (int j = i + 1; j < views.size(); j++) min = Math.min(min, cosine(views.get(i), views.get(j)));
-        return views.size() < 2 ? Double.NaN : min;
+        if (views.size() < 2) return Double.NaN;
+        double worst = 1;
+        for (int i = 0; i < views.size(); i++) {
+            double best = -1;
+            for (int j = 0; j < views.size(); j++) if (i != j) best = Math.max(best, cosine(views.get(i), views.get(j)));
+            worst = Math.min(worst, best);
+        }
+        return worst;
     }
 
     /** Enrolled views must agree at least this well. */

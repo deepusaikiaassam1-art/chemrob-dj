@@ -16,6 +16,8 @@ public final class Profile {
     public String doctor = "";        // doctor or pharmacy, free text
     public String emergencyName = "";
     public String emergencyPhone = "";
+    public String caregiverName = "";  // family member or nurse who gets missed-dose alerts; "" = emergency contact
+    public String caregiverPhone = "";
     public String facePhoto = "";      // enrolment photo taken with face detection, "" if none
     public double[] faceSignature;     // FaceSignature of the enrolled face, or null (older scans)
     public List<float[]> faceEmbeddings = new ArrayList<>(); // face-recognition fingerprints of the enrolled views
@@ -46,8 +48,8 @@ public final class Profile {
     public String summary(LocalDate today) {
         StringBuilder sb = new StringBuilder(name.trim());
         Integer a = age(today);
-        if (a != null) sb.append(", ").append(a).append(" y");
-        if (!sex.isEmpty()) sb.append(", ").append(sex);
+        if (a != null) sb.append(", ").append(I18n.tf("%d y", a));
+        if (!sex.isEmpty()) sb.append(", ").append(I18n.t(sex));
         return sb.toString();
     }
 
@@ -62,6 +64,7 @@ public final class Profile {
         }
         if (!phone.isEmpty() && !isPhone(phone)) return "Please check the phone number.";
         if (!emergencyPhone.isEmpty() && !isPhone(emergencyPhone)) return "Please check the emergency contact's number.";
+        if (!caregiverPhone.isEmpty() && !isPhone(caregiverPhone)) return "Please check the caregiver's number.";
         return null;
     }
 
@@ -70,11 +73,22 @@ public final class Profile {
         return digits.matches("\\d{6,15}");
     }
 
+    /** Who gets caregiver alerts: the caregiver, or else the emergency contact. */
+    public String caregiverNumber() {
+        return !caregiverPhone.trim().isEmpty() ? caregiverPhone.trim() : emergencyPhone.trim();
+    }
+
+    public String caregiverLabel() {
+        if (!caregiverPhone.trim().isEmpty()) return caregiverName.trim().isEmpty() ? caregiverPhone.trim() : caregiverName.trim();
+        return emergencyName.trim().isEmpty() ? emergencyPhone.trim() : emergencyName.trim();
+    }
+
     public Profile copy() {
         Profile p = new Profile();
         p.name = name; p.dateOfBirth = dateOfBirth; p.sex = sex; p.phone = phone;
         p.conditions = conditions; p.allergies = allergies; p.doctor = doctor;
         p.emergencyName = emergencyName; p.emergencyPhone = emergencyPhone;
+        p.caregiverName = caregiverName; p.caregiverPhone = caregiverPhone;
         p.facePhoto = facePhoto; p.faceSignature = faceSignature == null ? null : faceSignature.clone();
         p.faceEmbeddings = new ArrayList<>();
         if (faceEmbeddings != null) for (float[] e : faceEmbeddings) p.faceEmbeddings.add(e.clone());

@@ -30,6 +30,9 @@ import com.chemrob.medadherence.core.TimeUtil;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import static com.chemrob.medadherence.core.I18n.t;
+import static com.chemrob.medadherence.core.I18n.tf;
+
 /**
  * Full-screen "your phone is ringing" screen, shown over the lock screen by the alarm notification.
  * The sound is the insistent alarm notification, so it keeps ringing until the patient chooses.
@@ -81,10 +84,10 @@ public class AlarmActivity extends Activity {
             ScheduledDose dose = ScheduleEngine.find(data, key);
             if (dose == null || !ScheduleEngine.isDueNow(data, dose, LocalDateTime.now())) { finish(); return; }
             title = dose.med.name;
-            body = (dose.med.dose.isEmpty() ? "" : dose.med.dose + "  \u00b7  ") + "due " + TimeUtil.clock(dose.time);
+            body = (dose.med.dose.isEmpty() ? "" : dose.med.dose + "  \u00b7  ") + tf("due %s", TimeUtil.clock(dose.time));
             instructions = dose.med.instructions;
             if (Inventory.needsRefill(dose.med, LocalDateTime.now()))
-                instructions += (instructions.isEmpty() ? "" : "\n") + "Refill soon: " + Inventory.label(dose.med);
+                instructions += (instructions.isEmpty() ? "" : "\n") + tf("Refill soon: %s", Inventory.label(dose.med));
             observed = dose.med.observed;
             photo = dose.med.photo;
         }
@@ -162,7 +165,7 @@ public class AlarmActivity extends Activity {
         stopVibration();
         if (status == DoseStatus.TAKEN && !key.startsWith("TEST|")) {
             ScheduledDose d = ScheduleEngine.find(Store.get(this), key);
-            if (d != null) Voice.say(this, Voice.takePhrase(d.med));
+            if (d != null) Voice.sayTake(this, d.med);
         } else if (status == DoseStatus.SNOOZED) Voice.say(this, "Okay, I will remind you again soon.");
         if (key.startsWith("TEST|")) Notifications.cancel(this, key);
         else AlarmReceiver.record(this, key, status);

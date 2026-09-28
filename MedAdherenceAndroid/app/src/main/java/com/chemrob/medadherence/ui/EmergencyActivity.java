@@ -28,6 +28,9 @@ import com.chemrob.medadherence.core.Profile;
 
 import java.util.Locale;
 
+import static com.chemrob.medadherence.core.I18n.t;
+import static com.chemrob.medadherence.core.I18n.tf;
+
 /**
  * SOS: after a short countdown (so an accidental tap can be cancelled) it calls the emergency
  * contact directly, plays an automated voice message through the loudspeaker so it can be heard on
@@ -53,6 +56,7 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
     private LinearLayout root;
     private android.widget.Button cancelButton;
     private String smsText;
+    private boolean voiceEnglish = true;
     private boolean callStarted, smsOpened;
 
     public static Intent intent(Context c) { return new Intent(c, EmergencyActivity.class); }
@@ -79,7 +83,7 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
         title.setGravity(Gravity.CENTER);
         String number = Emergency.number(profile);
         String who = profile.emergencyName.trim().isEmpty() ? (number == null ? "" : number) : profile.emergencyName.trim();
-        status = Ui.text(root, number == null ? "No emergency contact is set." : "Calling " + who + " in", 20, Color.WHITE, false);
+        status = Ui.text(root, number == null ? t("No emergency contact is set.") : tf("Calling %s in", who), 20, Color.WHITE, false);
         status.setGravity(Gravity.CENTER);
         big = Ui.text(root, "", 120, Color.WHITE, true);
         big.setGravity(Gravity.CENTER);
@@ -91,7 +95,7 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
 
         if (number == null) {
             big.setText("!");
-            status.setText("Add an emergency contact in your profile first.");
+            status.setText(t("Add an emergency contact in your profile first."));
             return;
         }
         tts = new TextToSpeech(this, this);
@@ -137,7 +141,7 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
         smsText = Emergency.smsText(profile, loc == null ? null : loc.getLatitude(), loc == null ? null : loc.getLongitude());
 
         boolean canCall = checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED;
-        status.setText(canCall ? "Calling now..." : "Tap the call button to ring them.");
+        status.setText(t(canCall ? "Calling now..." : "Tap the call button to ring them."));
         Intent call = new Intent(canCall ? Intent.ACTION_CALL : Intent.ACTION_DIAL, Uri.parse("tel:" + number));
         try {
             startActivity(call);
@@ -176,7 +180,7 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
         if (sent && callStarted && !smsOpened) {
             handler.removeCallbacksAndMessages(null);
             if (tts != null) tts.stop();
-            status.setText("Now send your location: tap Send in the message.");
+            status.setText(t("Now send your location: tap Send in the message."));
             openSms();
         }
     }
@@ -185,7 +189,10 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
     public void onInit(int st) {
         ttsReady = st == TextToSpeech.SUCCESS;
         if (ttsReady) {
-            tts.setLanguage(Locale.getDefault());
+            // The app's language if the phone can speak it, otherwise English.
+            Locale want = com.chemrob.medadherence.core.I18n.locale();
+            voiceEnglish = com.chemrob.medadherence.core.I18n.lang().equals("en") || tts.isLanguageAvailable(want) < TextToSpeech.LANG_AVAILABLE;
+            tts.setLanguage(voiceEnglish ? (com.chemrob.medadherence.core.I18n.lang().equals("en") ? Locale.getDefault() : Locale.ENGLISH) : want);
             tts.setAudioAttributes(new AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
@@ -205,7 +212,7 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
                 Log.w(TAG, "Could not switch to speaker", e);
             }
         }
-        String text = Emergency.voiceText(profile);
+        String text = Emergency.voiceText(profile, voiceEnglish);
         for (int i = 0; i < VOICE_REPEATS; i++) {
             tts.speak(text, TextToSpeech.QUEUE_ADD, null, "sos" + i);
             tts.playSilentUtterance(1500, TextToSpeech.QUEUE_ADD, "gap" + i);

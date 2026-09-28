@@ -47,9 +47,9 @@ public final class Inventory {
         if (dosesLeft(m) == null) return "";
         String units = m.stock == Math.floor(m.stock) ? String.valueOf((long) m.stock) : String.format(Locale.ROOT, "%.1f", m.stock);
         Double days = daysLeft(m);
-        if (days == null) return units + " left";
+        if (days == null) return I18n.tf("%s left", units);
         long d = (long) Math.floor(days);
-        return units + " left (~" + d + " day" + (d == 1 ? "" : "s") + ")";
+        return d == 1 ? I18n.tf("%s left (~1 day)", units) : I18n.tf("%s left (~%d days)", units, d);
     }
 
     /** Taking a dose uses stock; changing a taken dose to something else returns it. */

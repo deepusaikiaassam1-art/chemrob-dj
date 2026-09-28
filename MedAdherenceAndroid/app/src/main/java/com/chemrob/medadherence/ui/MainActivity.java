@@ -39,7 +39,12 @@ import com.chemrob.medadherence.R;
 import com.chemrob.medadherence.Store;
 import com.chemrob.medadherence.alarm.AlarmReceiver;
 import com.chemrob.medadherence.alarm.AlarmScheduler;
+import com.chemrob.medadherence.alarm.Notifications;
 import com.chemrob.medadherence.core.AdherenceCalculator;
+import com.chemrob.medadherence.core.Backup;
+import com.chemrob.medadherence.core.Caregiver;
+import com.chemrob.medadherence.core.I18n;
+import com.chemrob.medadherence.core.JsonCodec;
 import com.chemrob.medadherence.core.AdherenceStats;
 import com.chemrob.medadherence.core.AppData;
 import com.chemrob.medadherence.core.Appointment;
@@ -54,7 +59,15 @@ import com.chemrob.medadherence.core.ScheduledDose;
 import com.chemrob.medadherence.core.TimeUtil;
 import com.chemrob.medadherence.core.Verification;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -62,6 +75,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+
+import static com.chemrob.medadherence.core.I18n.t;
+import static com.chemrob.medadherence.core.I18n.tf;
 
 /**
  * The app. First launch asks for the patient's profile; after that there are four tabs:
@@ -75,6 +91,7 @@ public class MainActivity extends Activity {
     /** A dose may be marked taken up to this long before its scheduled time. */
     private static final int EARLY_WINDOW_MIN = 120;
     private static final int REQ_NOTIFY = 1, REQ_PHOTO = 3, REQ_GALLERY = 4, REQ_SOS = 5, REQ_FACE = 6;
+    private static final int REQ_BACKUP = 7, REQ_RESTORE = 8, REQ_SAVE_PDF = 9;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView headerTitle, headerSub;
@@ -85,6 +102,9 @@ public class MainActivity extends Activity {
     private Tab tab = Tab.TODAY;
     private Mode mode = Mode.TABS;
     private boolean pharmacistUnlocked;
+    private char[] backupPassword;
+    private File pendingPdf;
+    private final ExecutorService io = Executors.newSingleThreadExecutor();
     private int adherenceDays = 30;
     private String todaySignature = "";
 
@@ -118,7 +138,7 @@ public class MainActivity extends Activity {
         headerTitle = Ui.text(titles, "", 26, Ui.INK, true);
         headerSub = Ui.text(titles, "", 16, Ui.MUTED, false);
         TextView sos = new TextView(this);
-        sos.setText("SOS");
+        sos.setText(t("SOS"));
         sos.setTextColor(android.graphics.Color.WHITE);
         sos.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         sos.setTypeface(Ui.medium(), Typeface.BOLD);
@@ -165,7 +185,7 @@ public class MainActivity extends Activity {
         pill.addView(iv, new FrameLayout.LayoutParams(Ui.dp(this, 24), Ui.dp(this, 24), Gravity.CENTER));
         item.addView(pill, new LinearLayout.LayoutParams(Ui.dp(this, 56), Ui.dp(this, 32)));
         TextView tv = new TextView(this);
-        tv.setText(label);
+        tv.setText(t(label));
         tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         tv.setGravity(Gravity.CENTER);
         tv.setMaxLines(1);
@@ -262,8 +282,8 @@ public class MainActivity extends Activity {
     }
 
     private void header(String title, String sub) {
-        headerTitle.setText(title);
-        headerSub.setText(sub);
+        headerTitle.setText(t(title));
+        headerSub.setText(sub == null ? null : t(sub));
         headerSub.setVisibility(sub == null || sub.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
@@ -272,7 +292,7 @@ public class MainActivity extends Activity {
         AlarmScheduler.syncAll(this);
     }
 
-    private void toast(String s) { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); }
+    private void toast(String s) { Toast.makeText(this, t(s), Toast.LENGTH_SHORT).show(); }
 
     private AlertDialog.Builder dialog() {
         return new AlertDialog.Builder(this, Ui.dark ? android.R.style.Theme_Material_Dialog_Alert : android.R.style.Theme_Material_Light_Dialog_Alert);
@@ -298,6 +318,7 @@ public class MainActivity extends Activity {
             r.addView(Ui.iconCircle(this, R.drawable.ic_person, Ui.PRIMARY, Ui.ON_PRIMARY, 56));
             Ui.text(r, "Your profile helps your pharmacist and doctor read your adherence reports, and keeps "
                     + "allergy and emergency details in one place.", 16, Ui.ON_PRIMARY_CONTAINER, false);
+            languagePicker(hero);
         } else {
             header("Profile", p.isComplete() ? p.summary(today) : "");
         }
@@ -323,8 +344,8 @@ public class MainActivity extends Activity {
         boolean recog = p.hasFaceRecognition();
         Ui.text(ft, recog ? "Face recognition on" : p.hasFace() ? "Face saved - scan again" : "Face scan needed", 18,
                 recog ? Ui.GOOD : Ui.INK, true);
-        Ui.text(ft, recog ? "Learned from " + p.faceEmbeddings.size() + " views. The app recognises you during "
-                        + "camera-observed doses, like a phone's face unlock. It stays on this phone."
+        Ui.text(ft, recog ? tf("Learned from %d views. The app recognises you during camera-observed doses, "
+                        + "like a phone's face unlock. It stays on this phone.", p.faceEmbeddings.size())
                 : "A short guided scan (look straight, turn a little each way, blink) so the app can recognise "
                         + "you during camera-observed doses. It stays on this phone.", 15, Ui.MUTED, false);
         Ui.button(fc, recog ? "Scan again" : "Scan my face", recog ? Ui.SURFACE_VARIANT : Ui.PRIMARY, v -> {
@@ -345,10 +366,11 @@ public class MainActivity extends Activity {
         List<Button> sexChips = new ArrayList<>();
         for (String s : new String[]{"Female", "Male", "Other"}) {
             Button chip = Ui.chip(sexRow, s, s.equals(p.sex), null);
+            chip.setTag(s); // the label is translated; the stored value stays English
             sexChips.add(chip);
             chip.setOnClickListener(v -> {
                 sex[0] = sex[0].equals(s) ? "" : s;
-                for (Button x : sexChips) restyleChip(x, x.getText().toString().equals(sex[0]));
+                for (Button x : sexChips) restyleChip(x, x.getTag().equals(sex[0]));
             });
         }
         EditText phone = Ui.field(c, "Phone", "e.g. +91 98765 43210", p.phone, InputType.TYPE_CLASS_PHONE);
@@ -365,6 +387,13 @@ public class MainActivity extends Activity {
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
         EditText ePhone = Ui.field(e, "Phone", "e.g. +91 91234 56789", p.emergencyPhone, InputType.TYPE_CLASS_PHONE);
 
+        Ui.section(body, "Caregiver");
+        LinearLayout cg = Ui.card(body, Ui.SURFACE);
+        Ui.text(cg, "A family member or nurse who is told when a dose is missed. Leave empty to use the emergency contact.", 15, Ui.MUTED, false);
+        EditText cName = Ui.field(cg, "Name", "e.g. Priya (daughter)", p.caregiverName,
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        EditText cPhone = Ui.field(cg, "Phone (WhatsApp or SMS)", "e.g. +91 90000 12345", p.caregiverPhone, InputType.TYPE_CLASS_PHONE);
+
         profileCapture = () -> {
             p.name = name.getText().toString().trim();
             p.dateOfBirth = dob.getText().toString().trim();
@@ -375,6 +404,8 @@ public class MainActivity extends Activity {
             p.doctor = doctor.getText().toString().trim();
             p.emergencyName = eName.getText().toString().trim();
             p.emergencyPhone = ePhone.getText().toString().trim();
+            p.caregiverName = cName.getText().toString().trim();
+            p.caregiverPhone = cPhone.getText().toString().trim();
         };
         TextView err = Ui.text(body, "", 16, Ui.BAD, true);
         err.setVisibility(View.GONE);
@@ -388,20 +419,22 @@ public class MainActivity extends Activity {
             p.doctor = doctor.getText().toString().trim();
             p.emergencyName = eName.getText().toString().trim();
             p.emergencyPhone = ePhone.getText().toString().trim();
+            p.caregiverName = cName.getText().toString().trim();
+            p.caregiverPhone = cPhone.getText().toString().trim();
             String problem = p.validate(LocalDate.now());
             if (problem == null && onboarding && !p.hasFace() && FaceEnrollActivity.hasFrontCamera())
                 problem = "Please scan your face (at the top) to finish your profile.";
             if (problem != null) {
-                err.setText(problem);
+                err.setText(t(problem));
                 err.setVisibility(View.VISIBLE);
                 scroll.post(() -> scroll.smoothScrollTo(0, err.getTop()));
                 return;
             }
             data().profile = p;
             profileDraft = null;
-            Store.save(this);
+            saveAndSync();
             if (!p.emergencyPhone.isEmpty()) askSosPermissions();
-            toast(onboarding ? "Welcome, " + p.firstName() + "!" : "Profile saved");
+            toast(onboarding ? tf("Welcome, %s!", p.firstName()) : t("Profile saved"));
             show(onboarding && data().medications.isEmpty() ? Tab.MEDICINES : Tab.TODAY);
         }).getLayoutParams().height = Ui.dp(this, 64);
         if (!onboarding) Ui.button(body, "Cancel", Ui.SURFACE_VARIANT, v -> { profileDraft = null; show(tab); });
@@ -423,8 +456,8 @@ public class MainActivity extends Activity {
     private void buildToday() {
         AppData d = data();
         LocalDateTime now = LocalDateTime.now();
-        String greet = now.getHour() < 12 ? "Good morning" : now.getHour() < 17 ? "Good afternoon" : "Good evening";
-        header(greet + ", " + d.profile.firstName(), now.format(DateTimeFormatter.ofPattern("EEEE, d MMMM")));
+        String greet = now.getHour() < 12 ? "Good morning, %s" : now.getHour() < 17 ? "Good afternoon, %s" : "Good evening, %s";
+        header(tf(greet, d.profile.firstName()), now.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", I18n.locale())));
 
         if (d.medications.isEmpty()) {
             LinearLayout c = Ui.card(body, Ui.PRIMARY_CONTAINER);
@@ -449,8 +482,8 @@ public class MainActivity extends Activity {
         for (Medication m : d.medications) {
             if (!Inventory.needsRefill(m, now)) continue;
             LinearLayout c = Ui.card(body, Ui.ALERT_BG);
-            Ui.text(c, "Refill " + m.name + " soon", 18, Ui.INK, true);
-            Ui.text(c, Inventory.label(m) + ". Contact your pharmacy so you don't run out.", 16, Ui.INK, false);
+            Ui.text(c, tf("Refill %s soon", m.name), 18, Ui.INK, true);
+            Ui.text(c, tf("%s. Contact your pharmacy so you don't run out.", Inventory.label(m)), 16, Ui.INK, false);
             Ui.button(c, "I have refilled it", Ui.PRIMARY, v -> askRefill(m));
         }
 
@@ -478,17 +511,17 @@ public class MainActivity extends Activity {
         LinearLayout prog = Ui.card(body, Ui.SURFACE);
         LinearLayout pr = Ui.row(prog);
         Ui.Ring ring = new Ui.Ring(this);
-        ring.set(doses.isEmpty() ? 0 : (float) taken / doses.size(), taken + "/" + doses.size(), "today", Ui.GOOD);
+        ring.set(doses.isEmpty() ? 0 : (float) taken / doses.size(), taken + "/" + doses.size(), t("today"), Ui.GOOD);
         LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(Ui.dp(this, 104), Ui.dp(this, 104));
         rl.rightMargin = Ui.dp(this, 18);
         pr.addView(ring, rl);
         LinearLayout pt = Ui.vbox(this);
         pr.addView(pt, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         Ui.text(pt, doses.isEmpty() ? "Nothing scheduled today"
-                : taken == doses.size() ? "All done for today" : taken + " of " + doses.size() + " doses taken", 19, Ui.INK, true);
+                : taken == doses.size() ? t("All done for today") : tf("%d of %d doses taken", taken, doses.size()), 19, Ui.INK, true);
         double week = AdherenceCalculator.compute(d, now.toLocalDate().minusDays(6).atStartOfDay(), now).overall.takingPercent();
-        TextView wk = Ui.text(pt, String.format(Locale.ROOT, "Last 7 days: %.0f%%", week), 16, Ui.colorFor(week), true);
-        if (settled > taken) Ui.text(pt, (settled - taken) + " missed or skipped today", 15, Ui.MUTED, false);
+        TextView wk = Ui.text(pt, tf("Last 7 days: %.0f%%", week), 16, Ui.colorFor(week), true);
+        if (settled > taken) Ui.text(pt, tf("%d missed or skipped today", settled - taken), 15, Ui.MUTED, false);
         wk.setOnClickListener(v -> show(Tab.ADHERENCE));
 
         if (!doses.isEmpty()) Ui.section(body, "Today's schedule");
@@ -499,11 +532,11 @@ public class MainActivity extends Activity {
         LinearLayout c = Ui.card(body, due ? Ui.DUE_BG : Ui.PRIMARY_CONTAINER);
         int fg = due ? Ui.INK : Ui.ON_PRIMARY_CONTAINER;
         String when;
-        if (due) when = "Due now  ·  " + TimeUtil.clock(dose.time);
+        if (due) when = t("Due now") + "  ·  " + TimeUtil.clock(dose.time);
         else {
             long mins = ChronoUnit.MINUTES.between(now, dose.time);
-            when = "Next  ·  " + (mins >= 24 * 60 ? dose.time.format(DateTimeFormatter.ofPattern("EEE HH:mm"))
-                    : TimeUtil.clock(dose.time) + (mins >= 60 ? "  (in " + mins / 60 + " h " + mins % 60 + " min)" : "  (in " + Math.max(0, mins) + " min)"));
+            when = t("Next") + "  ·  " + (mins >= 24 * 60 ? dose.time.format(DateTimeFormatter.ofPattern("EEE HH:mm", I18n.locale()))
+                    : TimeUtil.clock(dose.time) + "  " + (mins >= 60 ? tf("(in %d h %d min)", mins / 60, mins % 60) : tf("(in %d min)", Math.max(0, mins))));
         }
         TextView label = Ui.text(c, when.toUpperCase(Locale.ROOT), 14, due ? Ui.WARN : fg, true);
         label.setLetterSpacing(0.06f);
@@ -560,7 +593,8 @@ public class MainActivity extends Activity {
             case TAKEN:
                 boolean late = rec != null && rec.actionTime() != null
                         && Math.abs(ChronoUnit.MINUTES.between(dose.time, rec.actionTime())) > d.settings.onTimeWindowMinutes;
-                badge = (late ? "Late " : "Taken ") + (rec != null && rec.actionTime() != null ? TimeUtil.clock(rec.actionTime()) : "");
+                String at = rec != null && rec.actionTime() != null ? TimeUtil.clock(rec.actionTime()) : "";
+                badge = tf(late ? "Late %s" : "Taken %s", at).trim();
                 color = late ? Ui.WARN : Ui.GOOD;
                 break;
             case SKIPPED: badge = "Skipped"; color = Ui.MUTED; break;
@@ -572,7 +606,7 @@ public class MainActivity extends Activity {
 
         if (dose.med.observed) Ui.text(card, "Take this dose in front of the camera", 14, Ui.MUTED, false);
         if (rec != null && dose.med.observed && status == DoseStatus.TAKEN)
-            Ui.text(card, "Verification: " + verificationLabel(rec.verification), 14, Ui.MUTED, false);
+            Ui.text(card, tf("Verification: %s", t(verificationLabel(rec.verification))), 14, Ui.MUTED, false);
 
         boolean canAct = (status == DoseStatus.PENDING || status == DoseStatus.SNOOZED)
                 && !now.isBefore(dose.time.minusMinutes(EARLY_WINDOW_MIN));
@@ -598,7 +632,7 @@ public class MainActivity extends Activity {
     private void recordAction(String key, DoseStatus status) {
         if (status == DoseStatus.TAKEN) {
             ScheduledDose d = ScheduleEngine.find(data(), key);
-            if (d != null) Voice.say(this, Voice.takePhrase(d.med));
+            if (d != null) Voice.sayTake(this, d.med);
         }
         AlarmReceiver.record(this, key, status);
         if (status == DoseStatus.TAKEN) toast("Well done!");
@@ -616,7 +650,7 @@ public class MainActivity extends Activity {
 
     private void buildMedicines() {
         AppData d = data();
-        header("Medicines", d.medications.size() + (d.medications.size() == 1 ? " medicine" : " medicines"));
+        header("Medicines", d.medications.size() == 1 ? t("1 medicine") : tf("%d medicines", d.medications.size()));
         Ui.button(body, "+  Add a medicine", Ui.PRIMARY, v -> withEditPermission(() -> editMedication(null)));
         LocalDateTime now = LocalDateTime.now();
         for (Medication m : d.medications) {
@@ -636,14 +670,15 @@ public class MainActivity extends Activity {
             if (badges.getChildCount() > 0) ((LinearLayout.LayoutParams) badges.getChildAt(0).getLayoutParams()).leftMargin = 0;
 
             String course = m.durationDays > 0
-                    ? m.durationDays + " days  ·  " + m.startDate + " to " + TimeUtil.date(m.end())
-                    : "Ongoing since " + m.startDate;
-            Ui.text(card, m.timesLabel() + "  ·  " + m.frequencyLabel(), 16, Ui.INK, false);
+                    ? tf("%d days", m.durationDays) + "  ·  " + tf("%s to %s", m.startDate, TimeUtil.date(m.end()))
+                    : tf("Ongoing since %s", m.startDate);
+            Ui.text(card, m.timesLabel() + "  ·  " + (m.everyNDays == 1 ? t("daily") : m.everyNDays == 7 ? t("weekly")
+                    : tf("every %d days", m.everyNDays)), 16, Ui.INK, false);
             Ui.text(card, course, 15, Ui.MUTED, false);
             if (!m.instructions.isEmpty()) Ui.text(card, m.instructions, 15, Ui.MUTED, false);
             if (m.tracksStock()) {
                 boolean low = Inventory.needsRefill(m, now);
-                Ui.text(card, (low ? "Refill soon: " : "Stock: ") + Inventory.label(m), 15, low ? Ui.BAD : Ui.MUTED, low);
+                Ui.text(card, tf(low ? "Refill soon: %s" : "Stock: %s", Inventory.label(m)), 15, low ? Ui.BAD : Ui.MUTED, low);
             }
 
             LinearLayout a = Ui.row(card);
@@ -656,7 +691,7 @@ public class MainActivity extends Activity {
                 render();
             }));
             Ui.button(a2, "Delete", Ui.SURFACE_VARIANT, v -> withEditPermission(() -> confirm(
-                    "Delete " + m.name + " and its dose history? To stop reminders but keep the history, use Pause.", () -> {
+                    tf("Delete %s and its dose history? To stop reminders but keep the history, use Pause.", m.name), () -> {
                         d.medications.remove(m);
                         d.records.removeIf(r -> r.medId.equals(m.id));
                         deletePhoto(m.photo);
@@ -750,7 +785,7 @@ public class MainActivity extends Activity {
             });
         }
         f[3] = Ui.textField(o, "Times (24 h, edit freely)", "08:00 20:00", String.join(" ", m.times));
-        Ui.text(o, m.everyNDays == 1 ? "Every day" : "Every " + m.everyNDays + " days", 15, Ui.MUTED, false);
+        Ui.text(o, m.everyNDays == 1 ? t("Every day") : tf("Every %d days", m.everyNDays), 15, Ui.MUTED, false);
 
         Ui.section(body, "How long");
         LinearLayout hl = Ui.card(body, Ui.SURFACE);
@@ -764,7 +799,7 @@ public class MainActivity extends Activity {
         int[] durs = {3, 5, 7, 10, 14, 30, 0};
         for (int k = 0; k < durs.length; k++) {
             int dd = durs[k];
-            Ui.chip(k < 4 ? dr1 : dr2, dd == 0 ? "Ongoing" : dd + " d", m.durationDays == dd, v -> {
+            Ui.chip(k < 4 ? dr1 : dr2, dd == 0 ? t("Ongoing") : tf("%d d", dd), m.durationDays == dd, v -> {
                 formCapture.run();
                 m.durationDays = dd;
                 buildForm(null);
@@ -795,7 +830,7 @@ public class MainActivity extends Activity {
             String st = f[6].getText().toString().trim();
             Double sv = RegimenParser.parseNumber(st), pv = RegimenParser.parseNumber(f[7].getText().toString());
             if (m.name.isEmpty()) err = "Please enter the medicine name.";
-            else if (t.error != null) err = t.error + ". Use times like 08:00 20:00.";
+            else if (t.error != null) err = tf("%s. Use times like 08:00 20:00.", t(t.error));
             else if (TimeUtil.parseDate(m.startDate) == null) err = "Start date must look like 2026-10-01.";
             else if (!st.isEmpty() && (sv == null || sv < 0)) err = "Stock must be a number of units, e.g. 30, or left blank.";
             else if (pv == null || pv <= 0) err = "Units per dose must be more than 0, e.g. 1 or 0.5.";
@@ -809,7 +844,7 @@ public class MainActivity extends Activity {
                 d.medications.set(idx, m);
             } else d.medications.add(m);
             saveAndSync();
-            toast("Saved " + m.name);
+            toast(tf("Saved %s", m.name));
             show(Tab.MEDICINES);
         });
         if (error != null) scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
@@ -827,6 +862,14 @@ public class MainActivity extends Activity {
                 toast(profileDraft.hasFaceRecognition() ? "Face learned" : "Face saved");
             }
             if (profileDraft != null) showProfileForm(profileOnboarding);
+            return;
+        }
+        if (req == REQ_BACKUP || req == REQ_RESTORE || req == REQ_SAVE_PDF) {
+            if (result == RESULT_OK && intent != null && intent.getData() != null) {
+                if (req == REQ_BACKUP) doBackup(intent.getData());
+                else if (req == REQ_RESTORE) confirmRestore(intent.getData());
+                else savePdf(intent.getData());
+            }
             return;
         }
         if (formMed == null || result != RESULT_OK || intent == null) return;
@@ -847,10 +890,10 @@ public class MainActivity extends Activity {
     private void startSos() {
         Profile p = data().profile;
         if (com.chemrob.medadherence.core.Emergency.number(p) == null) {
-            dialog().setTitle("Add an emergency contact")
-                    .setMessage("The SOS button calls and texts your emergency contact. Add their name and phone number in your profile.")
-                    .setNegativeButton("Not now", null)
-                    .setPositiveButton("Open profile", (dlg, w) -> showProfileForm(false)).show();
+            dialog().setTitle(t("Add an emergency contact"))
+                    .setMessage(t("The SOS button calls and texts your emergency contact. Add their name and phone number in your profile."))
+                    .setNegativeButton(t("Not now"), null)
+                    .setPositiveButton(t("Open profile"), (dlg, w) -> showProfileForm(false)).show();
             return;
         }
         startActivity(EmergencyActivity.intent(this));
@@ -899,10 +942,10 @@ public class MainActivity extends Activity {
         r.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         LocalDateTime when = a.time();
         long days = ChronoUnit.DAYS.between(now.toLocalDate(), when.toLocalDate());
-        String rel = !upcoming ? (a.done ? "Done" : "Past") : days == 0 ? "Today" : days == 1 ? "Tomorrow" : "In " + days + " days";
-        TextView label = Ui.text(t, (actions ? "" : "Doctor follow-up  \u00b7  ") + rel, 14, upcoming ? Ui.PRIMARY : Ui.MUTED, true);
+        String rel = !upcoming ? t(a.done ? "Done" : "Past") : days == 0 ? t("Today") : days == 1 ? t("Tomorrow") : tf("In %d days", days);
+        TextView label = Ui.text(t, (actions ? "" : t("Doctor follow-up") + "  \u00b7  ") + rel, 14, upcoming ? Ui.PRIMARY : Ui.MUTED, true);
         if (!actions) label.setTextColor(fg);
-        Ui.text(t, when.format(DateTimeFormatter.ofPattern("EEE d MMM yyyy, HH:mm")), 19, fg, true);
+        Ui.text(t, when.format(DateTimeFormatter.ofPattern("EEE d MMM yyyy, HH:mm", I18n.locale())), 19, fg, true);
         Ui.text(t, a.who(), 16, fg, false);
         if (!a.purpose.isEmpty()) Ui.text(t, a.purpose, 15, actions ? Ui.MUTED : fg, false);
         if (!actions) {
@@ -912,9 +955,9 @@ public class MainActivity extends Activity {
         LinearLayout b = Ui.row(c);
         Ui.button(b, "Edit", Ui.PRIMARY_CONTAINER, v -> editVisit(a));
         if (upcoming) Ui.button(b, "Mark done", Ui.SURFACE_VARIANT, v -> { a.done = true; saveAndSync(); render(); });
-        Ui.button(b, "Delete", Ui.SURFACE_VARIANT, v -> dialog().setMessage("Delete this follow-up?")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Delete", (dlg, w) -> { data().appointments.remove(a); saveAndSync(); render(); })
+        Ui.button(b, "Delete", Ui.SURFACE_VARIANT, v -> dialog().setMessage(t("Delete this follow-up?"))
+                .setNegativeButton(t("Cancel"), null)
+                .setPositiveButton(t("Delete"), (dlg, w) -> { data().appointments.remove(a); saveAndSync(); render(); })
                 .show()).setTextColor(Ui.BAD);
     }
 
@@ -985,11 +1028,11 @@ public class MainActivity extends Activity {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime from = adherenceDays > 0 ? now.toLocalDate().minusDays(adherenceDays - 1).atStartOfDay() : earliestStart();
         AdherenceCalculator.Report r = AdherenceCalculator.compute(d, from, now);
-        header("Adherence", adherenceDays > 0 ? "Last " + adherenceDays + " days" : "Since the first dose");
+        header("Adherence", adherenceDays > 0 ? tf("Last %d days", adherenceDays) : t("Since the first dose"));
 
         LinearLayout periods = Ui.row(body);
         for (int p : new int[]{7, 30, 90, 0}) {
-            Ui.chip(periods, p == 0 ? "All" : p + " days", adherenceDays == p, v -> { adherenceDays = p; render(); });
+            Ui.chip(periods, p == 0 ? t("All") : tf("%d days", p), adherenceDays == p, v -> { adherenceDays = p; render(); });
         }
 
         AdherenceStats o = r.overall;
@@ -1003,13 +1046,13 @@ public class MainActivity extends Activity {
         LinearLayout ht = Ui.vbox(this);
         hr.addView(ht, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         Ui.text(ht, o.category(), 22, Ui.INK, true);
-        Ui.text(ht, o.taken + " of " + o.due + " doses taken", 16, Ui.MUTED, false);
-        Ui.text(ht, o.missed + " missed  ·  " + o.skipped + " skipped", 16, Ui.MUTED, false);
-        Ui.text(ht, "Streak: " + r.currentStreakDays + (r.currentStreakDays == 1 ? " day" : " days"), 16, Ui.PRIMARY, true);
+        Ui.text(ht, tf("%d of %d doses taken", o.taken, o.due), 16, Ui.MUTED, false);
+        Ui.text(ht, tf("%d missed", o.missed) + "  ·  " + tf("%d skipped", o.skipped), 16, Ui.MUTED, false);
+        Ui.text(ht, r.currentStreakDays == 1 ? t("Streak: 1 day") : tf("Streak: %d days", r.currentStreakDays), 16, Ui.PRIMARY, true);
 
         LinearLayout bars = Ui.card(body, Ui.SURFACE);
         Ui.bar(bars, "Doses taken", o.takingPercent(), null);
-        Ui.bar(bars, "On time (±" + d.settings.onTimeWindowMinutes + " min)", o.timingPercent(), null);
+        Ui.bar(bars, tf("On time (±%d min)", d.settings.onTimeWindowMinutes), o.timingPercent(), null);
         Ui.bar(bars, "Days fully covered", o.daysCoveredPercent(), "  (" + o.daysCovered + "/" + o.daysElapsed + ")");
         if (o.observedDue > 0)
             Ui.bar(bars, "Observed doses verified", o.verifiedPercent(), "  (" + o.observedVerified + "/" + o.observedDue + ")");
@@ -1046,14 +1089,19 @@ public class MainActivity extends Activity {
             Ui.text(t, s.label, 18, Ui.INK, true);
             Ui.text(t, s.category(), 15, Ui.colorFor(s.takingPercent()), true);
             Ui.bar(c, "Doses taken", s.takingPercent(), "  (" + s.taken + "/" + s.due + ")");
-            Ui.text(c, String.format(Locale.ROOT, "On time %.0f%%  ·  late %d  ·  missed %d  ·  skipped %d",
+            Ui.text(c, tf("On time %.0f%%  ·  late %d  ·  missed %d  ·  skipped %d",
                     s.timingPercent(), s.late, s.missed, s.skipped), 14, Ui.MUTED, false);
         }
 
         LinearLayout a = Ui.row(body);
         ((LinearLayout.LayoutParams) a.getLayoutParams()).topMargin = Ui.dp(this, 8);
-        Ui.button(a, "Share report", Ui.PRIMARY, v -> share("Medication adherence report", AdherenceCalculator.toText(d, r)));
-        Ui.button(a, "Share dose log", Ui.SURFACE_VARIANT, v -> share("Dose log (CSV)", AdherenceCalculator.doseLogCsv(d, from, now)));
+        Ui.button(a, "PDF report", Ui.PRIMARY, v -> pdfReport(from, LocalDateTime.now()));
+        Ui.button(a, "Share as text", Ui.SURFACE_VARIANT, v -> share("Medication adherence report", AdherenceCalculator.toText(d, r)));
+        LinearLayout a2 = Ui.row(body);
+        Ui.button(a2, "Share dose log", Ui.SURFACE_VARIANT, v -> share("Dose log (CSV)", AdherenceCalculator.doseLogCsv(d, from, now)));
+        if (!d.profile.caregiverNumber().isEmpty())
+            Ui.button(a2, "Send to caregiver", Ui.SURFACE_VARIANT, v -> sendToCaregiver(
+                    Caregiver.dailySummary(d, LocalDate.now(), LocalDateTime.now())));
     }
 
     private LocalDateTime earliestStart() {
@@ -1070,6 +1118,182 @@ public class MainActivity extends Activity {
         startActivity(Intent.createChooser(send, subject));
     }
 
+    /** WhatsApp or SMS to the caregiver, with the message filled in (the patient taps Send). */
+    private void sendToCaregiver(String message) {
+        String number = data().profile.caregiverNumber();
+        new AlertDialog.Builder(this)
+                .setTitle(tf("Send to %s", data().profile.caregiverLabel()))
+                .setMessage(message)
+                .setPositiveButton(t("WhatsApp"), (dlg, w) -> open(Notifications.whatsappIntent(number, message)))
+                .setNeutralButton(t("SMS"), (dlg, w) -> open(Notifications.smsIntent(number, message)))
+                .setNegativeButton(t("Cancel"), null).show();
+    }
+
+    private void open(Intent i) {
+        try { startActivity(i); } catch (android.content.ActivityNotFoundException e) { toast(t("No app can open this.")); }
+    }
+
+    // ------------------------------------------------------------------ background work
+
+    private interface Job { Object run() throws Exception; }
+    private interface Done { void done(Object result, Exception error); }
+
+    /** Runs slow work (files, encryption) off the main thread behind a small "please wait" dialog. */
+    private void background(String message, Job job, Done done) {
+        AlertDialog wait = new AlertDialog.Builder(this).setMessage(message).setCancelable(false).show();
+        io.execute(() -> {
+            Object r = null;
+            Exception err = null;
+            try { r = job.run(); } catch (Exception e) { err = e; }
+            final Object fr = r;
+            final Exception fe = err;
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                wait.dismiss();
+                done.done(fr, fe);
+            });
+        });
+    }
+
+    private void alert(String title, String message) {
+        new AlertDialog.Builder(this).setTitle(title).setMessage(message).setPositiveButton(t("OK"), null).show();
+    }
+
+    // ------------------------------------------------------------------ PDF report
+
+    private void pdfReport(LocalDateTime from, LocalDateTime now) {
+        AppData d = data();
+        background(t("Creating the PDF report..."), () -> PdfReport.write(this, d, from, now, ShareProvider.dir(this)), (r, e) -> {
+            if (e != null) {
+                android.util.Log.e("MedAdherence", "PDF failed", e);
+                alert(t("Could not create the report"), String.valueOf(e.getMessage()));
+                return;
+            }
+            File f = (File) r;
+            pendingPdf = f;
+            new AlertDialog.Builder(this)
+                    .setTitle(t("PDF report ready"))
+                    .setMessage(t("Share it with the doctor or pharmacist (WhatsApp, e-mail, print), or save it on the phone."))
+                    .setPositiveButton(t("Share"), (x, w) -> shareFile(f, "application/pdf", t("PDF report")))
+                    .setNeutralButton(t("Save to phone"), (x, w) -> startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                            .addCategory(Intent.CATEGORY_OPENABLE).setType("application/pdf")
+                            .putExtra(Intent.EXTRA_TITLE, f.getName()), REQ_SAVE_PDF))
+                    .setNegativeButton(t("Close"), null).show();
+        });
+    }
+
+    private void shareFile(File f, String type, String title) {
+        Uri u = ShareProvider.uri(f);
+        Intent send = new Intent(Intent.ACTION_SEND).setType(type)
+                .putExtra(Intent.EXTRA_STREAM, u)
+                .putExtra(Intent.EXTRA_SUBJECT, f.getName())
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        send.setClipData(ClipData.newRawUri(f.getName(), u));
+        startActivity(Intent.createChooser(send, title));
+    }
+
+    private void savePdf(Uri dest) {
+        File f = pendingPdf;
+        if (f == null || !f.exists()) return;
+        background(t("Saving..."), () -> {
+            try (InputStream in = new FileInputStream(f); OutputStream out = getContentResolver().openOutputStream(dest)) {
+                if (out == null) throw new IOException("Cannot write there");
+                byte[] buf = new byte[16384];
+                int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            }
+            return null;
+        }, (r, e) -> toast(e == null ? t("Report saved") : t("Could not save the report")));
+    }
+
+    // ------------------------------------------------------------------ backup
+
+    private void buildBackup() {
+        Ui.section(body, "Backup and restore");
+        LinearLayout c = Ui.card(body, Ui.SURFACE);
+        Ui.text(c, "Save the medicines, dose history, profile and photos to one file (for example on Google Drive "
+                + "or a memory card), and bring everything back on a new phone.", 15, Ui.MUTED, false);
+        EditText pw = Ui.field(c, "Password (recommended)", "You will need it to restore", "",
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        Ui.button(c, "Back up to a file", Ui.PRIMARY, v -> {
+            backupPassword = pw.getText().toString().toCharArray();
+            startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                    .setType("application/octet-stream")
+                    .putExtra(Intent.EXTRA_TITLE, "MedAdherence-backup-" + TimeUtil.date(LocalDate.now()) + ".mabackup"), REQ_BACKUP);
+        });
+        Ui.button(c, "Restore from a file", Ui.SURFACE_VARIANT, v -> {
+            backupPassword = pw.getText().toString().toCharArray();
+            startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), REQ_RESTORE);
+        });
+    }
+
+    private void doBackup(Uri uri) {
+        char[] pw = backupPassword == null ? new char[0] : backupPassword;
+        backupPassword = null;
+        String json = JsonCodec.toJson(data());
+        background(t("Backing up..."), () -> {
+            try (OutputStream raw = getContentResolver().openOutputStream(uri)) {
+                if (raw == null) throw new IOException("Cannot write there");
+                BufferedOutputStream out = new BufferedOutputStream(raw);
+                Backup.write(out, json, getFilesDir(), pw);
+                out.flush();
+            }
+            return null;
+        }, (r, e) -> {
+            if (e != null) {
+                android.util.Log.e("MedAdherence", "Backup failed", e);
+                alert(t("Backup failed"), String.valueOf(e.getMessage()));
+            } else alert(t("Backup saved"), pw.length > 0
+                    ? t("Keep the password safe: the backup cannot be opened without it.")
+                    : t("This backup has no password: anyone with the file can read the patient's data. Keep it private."));
+        });
+    }
+
+    private void confirmRestore(Uri uri) {
+        char[] pw = backupPassword;
+        backupPassword = null;
+        new AlertDialog.Builder(this)
+                .setTitle(t("Restore this backup?"))
+                .setMessage(t("Everything on this phone (medicines, history, profile and photos) will be replaced by the backup."))
+                .setPositiveButton(t("Restore"), (dlg, w) -> doRestore(uri, pw))
+                .setNegativeButton(t("Cancel"), null).show();
+    }
+
+    private void doRestore(Uri uri, char[] pw) {
+        File staging = new File(getFilesDir(), "restore_tmp");
+        Store.deleteTree(staging);
+        background(t("Restoring..."), () -> {
+            String json;
+            try (InputStream in = getContentResolver().openInputStream(uri)) {
+                if (in == null) throw new IOException("Cannot read the file");
+                json = Backup.read(new BufferedInputStream(in), pw, staging, getFilesDir());
+            }
+            Store.restore(this, json, staging);
+            return null;
+        }, (r, e) -> {
+            if (e != null) Store.deleteTree(staging);
+            if (e instanceof Backup.BackupException && ((Backup.BackupException) e).wrongPassword) {
+                EditText field = new EditText(this);
+                field.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                field.setHint(t("Backup password"));
+                new AlertDialog.Builder(this)
+                        .setTitle(pw == null || pw.length == 0 ? t("This backup has a password") : t("Wrong password"))
+                        .setView(field)
+                        .setPositiveButton(t("Restore"), (dlg, w) -> doRestore(uri, field.getText().toString().toCharArray()))
+                        .setNegativeButton(t("Cancel"), null).show();
+                return;
+            }
+            if (e != null) {
+                android.util.Log.e("MedAdherence", "Restore failed", e);
+                alert(t("Could not restore"), e instanceof Backup.BackupException ? t(e.getMessage()) : String.valueOf(e.getMessage()));
+                return;
+            }
+            AlarmScheduler.syncAll(this);
+            toast(t("Backup restored"));
+            recreate();
+        });
+    }
+
     // ================================================================== Pharmacist
 
     private void buildPharmacist() {
@@ -1084,7 +1308,7 @@ public class MainActivity extends Activity {
             TextView msg = Ui.text(c, "", 15, Ui.BAD, true);
             Ui.button(c, "Unlock", Ui.PRIMARY, v -> {
                 if (pin.getText().toString().equals(d.settings.pharmacistPin)) { pharmacistUnlocked = true; render(); }
-                else msg.setText("Wrong PIN");
+                else msg.setText(t("Wrong PIN"));
             });
             return;
         }
@@ -1092,6 +1316,7 @@ public class MainActivity extends Activity {
         buildReviewQueue();
         buildImport();
         buildSettings();
+        buildBackup();
         buildReliability();
         Ui.button(body, "Lock pharmacist mode", Ui.SURFACE_VARIANT, v -> { pharmacistUnlocked = false; render(); });
     }
@@ -1103,13 +1328,13 @@ public class MainActivity extends Activity {
             if (r.status == DoseStatus.TAKEN && r.verification == Verification.NEEDS_REVIEW) queue.add(r);
         queue.sort((a, b) -> b.scheduled.compareTo(a.scheduled));
 
-        Ui.section(body, "Observed doses to review (" + queue.size() + ")");
+        Ui.section(body, tf("Observed doses to review (%d)", queue.size()));
         LinearLayout c = Ui.card(body, Ui.SURFACE);
         if (queue.isEmpty()) Ui.text(c, "Nothing waiting. Doses that pass every camera check are verified automatically.", 16, Ui.MUTED, false);
         for (DoseRecord r : queue.subList(0, Math.min(10, queue.size()))) {
             Medication m = d.findMed(r.medId);
-            Ui.text(c, (m != null ? m.name : "?") + "  ·  scheduled " + r.scheduled, 17, Ui.INK, true);
-            Ui.text(c, "Taken " + r.actionAt + "  \u00b7  " + r.note, 14, Ui.MUTED, false);
+            Ui.text(c, (m != null ? m.name : "?") + "  ·  " + tf("scheduled %s", r.scheduled), 17, Ui.INK, true);
+            Ui.text(c, tf("Taken %s", r.actionAt) + "  \u00b7  " + r.note, 14, Ui.MUTED, false);
             if (!d.profile.facePhoto.isEmpty()) Ui.text(c, "First photo (blue frame) is the enrolled face.", 13, Ui.MUTED, false);
             HorizontalScrollView hs = new HorizontalScrollView(this);
             LinearLayout thumbs = Ui.hbox(this);
@@ -1144,7 +1369,7 @@ public class MainActivity extends Activity {
             ImageView full = new ImageView(this);
             full.setImageBitmap(BitmapFactory.decodeFile(path));
             full.setAdjustViewBounds(true);
-            dialog().setView(full).setPositiveButton("Close", null).show();
+            dialog().setView(full).setPositiveButton(t("Close"), null).show();
         });
     }
 
@@ -1163,13 +1388,13 @@ public class MainActivity extends Activity {
         LinearLayout a = Ui.row(c);
         Ui.button(a, "Import", Ui.PRIMARY, v -> {
             RegimenParser.ImportResult res = RegimenParser.importText(box.getText().toString(), LocalDate.now(), "pharmacist");
-            if (res.medications.isEmpty() && res.errors.isEmpty()) { msg.setText("Type or paste at least one line."); return; }
+            if (res.medications.isEmpty() && res.errors.isEmpty()) { msg.setText(t("Type or paste at least one line.")); return; }
             if (!res.medications.isEmpty()) {
                 if (replace.isChecked()) d.medications.clear();
                 d.medications.addAll(res.medications);
                 saveAndSync();
             }
-            msg.setText("Imported " + res.medications.size() + " medicine(s)." + (res.errors.isEmpty() ? "" : "\n" + String.join("\n", res.errors)));
+            msg.setText(tf("Imported %d medicine(s).", res.medications.size()) + (res.errors.isEmpty() ? "" : "\n" + String.join("\n", res.errors)));
             msg.setTextColor(res.errors.isEmpty() ? Ui.GOOD : Ui.BAD);
             if (res.errors.isEmpty()) box.setText("");
         });
@@ -1199,12 +1424,29 @@ public class MainActivity extends Activity {
             });
         }
 
+        languagePicker(c);
+
         CheckBox voice = Ui.check(c, "Voice guidance: speak instructions when taking a dose", s.voiceGuidance);
         voice.setOnCheckedChangeListener((btn, on) -> {
             s.voiceGuidance = on;
             Store.save(this);
             if (on) Voice.say(this, "Voice guidance is on.");
         });
+
+        TextView cgLabel = Ui.text(c, "Caregiver alerts", 14, Ui.MUTED, true);
+        ((LinearLayout.LayoutParams) cgLabel.getLayoutParams()).topMargin = Ui.dp(this, 16);
+        String who = data().profile.caregiverLabel();
+        if (data().profile.caregiverNumber().isEmpty())
+            Ui.text(c, "Add a caregiver or emergency contact in the patient profile to use these.", 15, Ui.MUTED, false);
+        CheckBox missedAlert = Ui.check(c, who.isEmpty() ? t("Offer to tell the caregiver when a dose is missed")
+                : tf("Offer to tell %s when a dose is missed", who), s.caregiverMissedAlerts);
+        missedAlert.setOnCheckedChangeListener((btn, on) -> {
+            s.caregiverMissedAlerts = on;
+            s.caregiverLastCheck = TimeUtil.second(LocalDateTime.now()); // only doses missed from now on
+            saveAndSync();
+        });
+        CheckBox daily = Ui.check(c, tf("Evening summary for the caregiver at %02d:00", s.summaryHour), s.caregiverDailySummary);
+        daily.setOnCheckedChangeListener((btn, on) -> { s.caregiverDailySummary = on; saveAndSync(); });
 
         int numType = InputType.TYPE_CLASS_NUMBER;
         EditText grace = Ui.field(c, "Minutes before a dose counts as missed", "120", String.valueOf(s.graceMinutes), numType);
@@ -1223,6 +1465,33 @@ public class MainActivity extends Activity {
             render();
         });
         Ui.button(c, "Edit patient profile", Ui.SURFACE_VARIANT, v -> showProfileForm(false));
+    }
+
+    /** Language chips (English, Hindi, Bengali, Assamese, or the phone's language). */
+    private void languagePicker(LinearLayout c) {
+        com.chemrob.medadherence.core.Settings s = data().settings;
+        TextView label = Ui.text(c, "Language / भाषा / ভাষা", 14, Ui.MUTED, true);
+        ((LinearLayout.LayoutParams) label.getLayoutParams()).topMargin = Ui.dp(this, 16);
+        List<String[]> options = new ArrayList<>();
+        options.add(new String[]{"system", t("Phone setting")});
+        for (String[] l : I18n.LANGUAGES) options.add(l);
+        LinearLayout row = null;
+        for (int i = 0; i < options.size(); i++) {
+            if (i % 2 == 0) row = Ui.row(c);
+            String[] o = options.get(i);
+            Button chip = Ui.chip(row, o[1], s.language.equals(o[0]), v -> {
+                if (s.language.equals(o[0])) return;
+                s.language = o[0];
+                Store.save(this);
+                Lang.apply(this, data());
+                saveAndSync(); // notification texts follow the new language
+                recreate();
+            });
+            chip.setText(o[1]); // names are shown in their own script
+        }
+        if (row != null && row.getChildCount() == 1) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+        if (!"en".equals(I18n.lang()))
+            Ui.text(c, "Translations are new: please tell your pharmacist if a word is wrong.", 13, Ui.MUTED, false);
     }
 
     private static int clamp(EditText e, int fallback, int lo, int hi) {
@@ -1279,17 +1548,17 @@ public class MainActivity extends Activity {
 
     private void confirm(String message, Runnable onYes) {
         dialog().setMessage(message)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Delete", (dlg, w) -> onYes.run()).show();
+                .setNegativeButton(t("Cancel"), null)
+                .setPositiveButton(t("Delete"), (dlg, w) -> onYes.run()).show();
     }
 
     private void askPin(String title, Runnable onOk) {
         EditText pin = new EditText(this);
         pin.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-        pin.setHint("PIN");
+        pin.setHint(t("PIN"));
         dialog().setTitle(title).setView(pin)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("OK", (dlg, w) -> {
+                .setNegativeButton(t("Cancel"), null)
+                .setPositiveButton(t("OK"), (dlg, w) -> {
                     if (pin.getText().toString().equals(data().settings.pharmacistPin)) {
                         pharmacistUnlocked = true;
                         onOk.run();
@@ -1300,12 +1569,12 @@ public class MainActivity extends Activity {
     private void askRefill(Medication m) {
         EditText qty = new EditText(this);
         qty.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        qty.setHint("Units added, e.g. 30");
-        dialog().setTitle("Refill " + m.name)
-                .setMessage(m.tracksStock() ? "Now: " + Inventory.label(m) : "Stock is not tracked yet. Enter what you have now.")
+        qty.setHint(t("Units added, e.g. 30"));
+        dialog().setTitle(tf("Refill %s", m.name))
+                .setMessage(m.tracksStock() ? tf("Now: %s", Inventory.label(m)) : t("Stock is not tracked yet. Enter what you have now."))
                 .setView(qty)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Add", (dlg, w) -> {
+                .setNegativeButton(t("Cancel"), null)
+                .setPositiveButton(t("Add"), (dlg, w) -> {
                     Double units = RegimenParser.parseNumber(qty.getText().toString());
                     if (units == null || units <= 0) { toast("Enter how many units were added."); return; }
                     Inventory.refill(m, units);

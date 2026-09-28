@@ -30,12 +30,15 @@ import android.widget.TextView;
 
 import com.chemrob.medadherence.R;
 import com.chemrob.medadherence.Store;
+import com.chemrob.medadherence.core.I18n;
 
 import java.io.File;
 
 /**
  * The app's look, built in code: a light and a dark palette, large readable type, rounded cards
  * with soft shadows, big buttons, icons and a progress ring. No XML layouts or support libraries.
+ * Every label passed to these helpers is translated (see {@link I18n}); names typed by the user
+ * have no translation and are shown as they are.
  */
 public final class Ui {
     private Ui() {}
@@ -135,7 +138,7 @@ public final class Ui {
     public static TextView text(ViewGroup parent, CharSequence s, float sp, int color, boolean bold) {
         Context c = parent.getContext();
         TextView t = new TextView(c);
-        t.setText(s);
+        t.setText(s instanceof String ? I18n.t((String) s) : s);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(color);
         t.setLineSpacing(0, 1.12f);
@@ -151,7 +154,7 @@ public final class Ui {
 
     /** Section label above a group of cards. */
     public static TextView section(ViewGroup parent, String s) {
-        TextView t = text(parent, s.toUpperCase(java.util.Locale.ROOT), 13, MUTED, true);
+        TextView t = text(parent, I18n.t(s).toUpperCase(java.util.Locale.ROOT), 13, MUTED, true);
         t.setLetterSpacing(0.08f);
         ((LinearLayout.LayoutParams) t.getLayoutParams()).topMargin = dp(parent.getContext(), 22);
         return t;
@@ -164,7 +167,7 @@ public final class Ui {
     public static Button button(ViewGroup parent, String label, int color, View.OnClickListener l) {
         Context c = parent.getContext();
         Button b = new Button(c);
-        b.setText(label);
+        b.setText(I18n.t(label));
         b.setAllCaps(false);
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         b.setTypeface(medium());
@@ -206,7 +209,7 @@ public final class Ui {
         TextView l = text(parent, label, 14, MUTED, true);
         ((LinearLayout.LayoutParams) l.getLayoutParams()).topMargin = dp(c, 14);
         EditText e = new EditText(c);
-        e.setHint(hint);
+        e.setHint(I18n.t(hint));
         e.setText(value);
         e.setInputType(inputType);
         e.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
@@ -225,7 +228,7 @@ public final class Ui {
 
     public static CheckBox check(ViewGroup parent, String label, boolean value) {
         CheckBox cb = new CheckBox(parent.getContext());
-        cb.setText(label);
+        cb.setText(I18n.t(label));
         cb.setTextColor(INK);
         cb.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
         cb.setButtonTintList(ColorStateList.valueOf(PRIMARY));
@@ -237,7 +240,7 @@ public final class Ui {
     public static TextView badge(ViewGroup parent, String s, int color) {
         Context c = parent.getContext();
         TextView t = new TextView(c);
-        t.setText(s);
+        t.setText(I18n.t(s));
         t.setTextColor(color == PRIMARY ? ON_PRIMARY : color == MUTED ? SURFACE : ON_STATUS);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         t.setTypeface(medium());
@@ -257,7 +260,7 @@ public final class Ui {
         Context c = parent.getContext();
         LinearLayout head = row(parent);
         ((LinearLayout.LayoutParams) head.getLayoutParams()).topMargin = dp(c, 12);
-        text(head, label + (suffix == null ? "" : suffix), 15, INK, false);
+        text(head, I18n.t(label) + (suffix == null ? "" : suffix), 15, INK, false);
         TextView pct = new TextView(c);
         pct.setText(String.format(java.util.Locale.ROOT, "%.0f%%", percent));
         pct.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
