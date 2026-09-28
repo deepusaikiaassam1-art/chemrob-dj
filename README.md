@@ -237,6 +237,7 @@ Source, and the evaluation evidence. Not the data, and not the trained models.
 | `data/` (2.9 GB) | no | downloaded from ChEMBL / CO-ADD; rebuildable, and better cited than mirrored |
 | `artifacts/*.joblib` (69 MB) | no | trained bundles; rebuildable from the data |
 | `*.log` (50 MB) | no | machine- and path-specific |
+| `MedAdherenceUnity/` | yes | separate Unity Android app for medication-adherence monitoring — see [its README](MedAdherenceUnity/README.md) |
 
 To rebuild everything from nothing:
 

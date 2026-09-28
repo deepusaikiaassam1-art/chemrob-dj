@@ -1,0 +1,8 @@
+{
+    "name": "MedAdherence",
+    "rootNamespace": "MedAdherence",
+    "references": [
+        "MedAdherence.Core",
+        "UnityEngine.UI"
+    ]
+}
