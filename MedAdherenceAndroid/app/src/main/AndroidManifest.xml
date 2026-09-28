@@ -65,6 +65,13 @@
             android:screenOrientation="portrait"
             android:showWhenLocked="true" />
 
+        <!-- Face scan for the patient profile (on-device face detection). -->
+        <activity
+            android:name=".ui.FaceEnrollActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
+
         <!-- Photographs a medicine for its card and alarm. -->
         <activity
             android:name=".ui.PhotoActivity"

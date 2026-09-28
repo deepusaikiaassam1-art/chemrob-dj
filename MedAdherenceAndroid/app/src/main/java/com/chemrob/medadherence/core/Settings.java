@@ -7,5 +7,6 @@ public final class Settings {
     public String pharmacistPin = "0000";
     public boolean lockEditingWithPin;
     public String patientName = "";      // legacy; the name now lives in Profile
-    public String theme = "system";      // "system", "light" or "dark"
+    public String theme = "system";
+    public boolean voiceGuidance = true;   // speak instructions once a dose is accepted      // "system", "light" or "dark"
 }

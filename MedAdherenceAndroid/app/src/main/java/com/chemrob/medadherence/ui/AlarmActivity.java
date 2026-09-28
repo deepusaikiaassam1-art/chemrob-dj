@@ -160,6 +160,10 @@ public class AlarmActivity extends Activity {
 
     private void act(DoseStatus status) {
         stopVibration();
+        if (status == DoseStatus.TAKEN && !key.startsWith("TEST|")) {
+            ScheduledDose d = ScheduleEngine.find(Store.get(this), key);
+            if (d != null) Voice.say(this, Voice.takePhrase(d.med));
+        } else if (status == DoseStatus.SNOOZED) Voice.say(this, "Okay, I will remind you again soon.");
         if (key.startsWith("TEST|")) Notifications.cancel(this, key);
         else AlarmReceiver.record(this, key, status);
         finish();

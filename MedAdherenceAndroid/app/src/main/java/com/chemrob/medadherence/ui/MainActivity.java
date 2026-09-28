@@ -74,7 +74,7 @@ public class MainActivity extends Activity {
 
     /** A dose may be marked taken up to this long before its scheduled time. */
     private static final int EARLY_WINDOW_MIN = 120;
-    private static final int REQ_NOTIFY = 1, REQ_PHOTO = 3, REQ_GALLERY = 4, REQ_SOS = 5;
+    private static final int REQ_NOTIFY = 1, REQ_PHOTO = 3, REQ_GALLERY = 4, REQ_SOS = 5, REQ_FACE = 6;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView headerTitle, headerSub;
@@ -87,6 +87,11 @@ public class MainActivity extends Activity {
     private boolean pharmacistUnlocked;
     private int adherenceDays = 30;
     private String todaySignature = "";
+
+    // Profile form state (kept across the face-scan round trip).
+    private Profile profileDraft;
+    private boolean profileOnboarding;
+    private Runnable profileCapture;
 
     // Medicine form state (kept across the camera / gallery round trip).
     private Medication formMed;
@@ -281,7 +286,9 @@ public class MainActivity extends Activity {
         nav.setVisibility(onboarding ? View.GONE : View.VISIBLE);
         drawAvatar();
         body.removeAllViews();
-        Profile p = data().profile.copy();
+        if (profileDraft == null) profileDraft = data().profile.copy();
+        Profile p = profileDraft;
+        profileOnboarding = onboarding;
         LocalDate today = LocalDate.now();
 
         if (onboarding) {
@@ -294,6 +301,31 @@ public class MainActivity extends Activity {
         } else {
             header("Profile", p.isComplete() ? p.summary(today) : "");
         }
+
+        Ui.section(body, "Face scan");
+        LinearLayout fc = Ui.card(body, Ui.SURFACE);
+        LinearLayout fr = Ui.row(fc);
+        Bitmap face = Ui.loadBitmap(p.facePhoto, Ui.dp(this, 84));
+        if (face != null) {
+            ImageView iv = new ImageView(this);
+            iv.setImageBitmap(face);
+            iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            iv.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override public void getOutline(View v, android.graphics.Outline o) { o.setOval(0, 0, v.getWidth(), v.getHeight()); }
+            });
+            iv.setClipToOutline(true);
+            LinearLayout.LayoutParams il = new LinearLayout.LayoutParams(Ui.dp(this, 84), Ui.dp(this, 84));
+            il.rightMargin = Ui.dp(this, 14);
+            fr.addView(iv, il);
+        } else fr.addView(Ui.iconCircle(this, R.drawable.ic_person, Ui.PRIMARY_CONTAINER, Ui.ON_PRIMARY_CONTAINER, 84));
+        LinearLayout ft = Ui.vbox(this);
+        fr.addView(ft, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        Ui.text(ft, p.hasFace() ? "Face saved" : "Face scan needed", 18, p.hasFace() ? Ui.GOOD : Ui.INK, true);
+        Ui.text(ft, "Face detection checks that it is you taking camera-observed doses. It stays on this phone.", 15, Ui.MUTED, false);
+        Ui.button(fc, p.hasFace() ? "Scan again" : "Scan my face", p.hasFace() ? Ui.SURFACE_VARIANT : Ui.PRIMARY, v -> {
+            if (profileCapture != null) profileCapture.run();
+            startActivityForResult(FaceEnrollActivity.intent(this), REQ_FACE);
+        });
 
         Ui.section(body, "About you");
         LinearLayout c = Ui.card(body, Ui.SURFACE);
@@ -328,6 +360,17 @@ public class MainActivity extends Activity {
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
         EditText ePhone = Ui.field(e, "Phone", "e.g. +91 91234 56789", p.emergencyPhone, InputType.TYPE_CLASS_PHONE);
 
+        profileCapture = () -> {
+            p.name = name.getText().toString().trim();
+            p.dateOfBirth = dob.getText().toString().trim();
+            p.sex = sex[0];
+            p.phone = phone.getText().toString().trim();
+            p.conditions = cond.getText().toString().trim();
+            p.allergies = allergy.getText().toString().trim();
+            p.doctor = doctor.getText().toString().trim();
+            p.emergencyName = eName.getText().toString().trim();
+            p.emergencyPhone = ePhone.getText().toString().trim();
+        };
         TextView err = Ui.text(body, "", 16, Ui.BAD, true);
         err.setVisibility(View.GONE);
         Ui.button(body, onboarding ? "Create profile" : "Save profile", Ui.PRIMARY, v -> {
@@ -341,6 +384,8 @@ public class MainActivity extends Activity {
             p.emergencyName = eName.getText().toString().trim();
             p.emergencyPhone = ePhone.getText().toString().trim();
             String problem = p.validate(LocalDate.now());
+            if (problem == null && onboarding && !p.hasFace() && FaceEnrollActivity.hasFrontCamera())
+                problem = "Please scan your face (at the top) to finish your profile.";
             if (problem != null) {
                 err.setText(problem);
                 err.setVisibility(View.VISIBLE);
@@ -348,12 +393,13 @@ public class MainActivity extends Activity {
                 return;
             }
             data().profile = p;
+            profileDraft = null;
             Store.save(this);
             if (!p.emergencyPhone.isEmpty()) askSosPermissions();
             toast(onboarding ? "Welcome, " + p.firstName() + "!" : "Profile saved");
             show(onboarding && data().medications.isEmpty() ? Tab.MEDICINES : Tab.TODAY);
         }).getLayoutParams().height = Ui.dp(this, 64);
-        if (!onboarding) Ui.button(body, "Cancel", Ui.SURFACE_VARIANT, v -> show(tab));
+        if (!onboarding) Ui.button(body, "Cancel", Ui.SURFACE_VARIANT, v -> { profileDraft = null; show(tab); });
         scroll.scrollTo(0, 0);
     }
 
@@ -532,6 +578,10 @@ public class MainActivity extends Activity {
     }
 
     private void recordAction(String key, DoseStatus status) {
+        if (status == DoseStatus.TAKEN) {
+            ScheduledDose d = ScheduleEngine.find(data(), key);
+            if (d != null) Voice.say(this, Voice.takePhrase(d.med));
+        }
         AlarmReceiver.record(this, key, status);
         if (status == DoseStatus.TAKEN) toast("Well done!");
         render();
@@ -751,6 +801,15 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int result, Intent intent) {
         super.onActivityResult(req, result, intent);
+        if (req == REQ_FACE) {
+            if (result == RESULT_OK && intent != null && profileDraft != null) {
+                profileDraft.facePhoto = intent.getStringExtra(FaceEnrollActivity.EXTRA_PATH);
+                profileDraft.faceSignature = intent.getDoubleArrayExtra(FaceEnrollActivity.EXTRA_SIGNATURE);
+                toast("Face saved");
+            }
+            if (profileDraft != null) showProfileForm(profileOnboarding);
+            return;
+        }
         if (formMed == null || result != RESULT_OK || intent == null) return;
         String path = null;
         if (req == REQ_PHOTO) path = intent.getStringExtra(PhotoActivity.EXTRA_PATH);
@@ -1031,12 +1090,21 @@ public class MainActivity extends Activity {
         for (DoseRecord r : queue.subList(0, Math.min(10, queue.size()))) {
             Medication m = d.findMed(r.medId);
             Ui.text(c, (m != null ? m.name : "?") + "  ·  scheduled " + r.scheduled, 17, Ui.INK, true);
-            Ui.text(c, String.format(Locale.ROOT, "Taken %s  ·  %s  ·  movement %.0f%%  ·  person in view %.0f%%",
-                    r.actionAt, r.note, r.livenessScore * 100, r.presenceScore * 100), 14, Ui.MUTED, false);
+            Ui.text(c, "Taken " + r.actionAt + "  \u00b7  " + r.note, 14, Ui.MUTED, false);
+            if (!d.profile.facePhoto.isEmpty()) Ui.text(c, "First photo (blue frame) is the enrolled face.", 13, Ui.MUTED, false);
             HorizontalScrollView hs = new HorizontalScrollView(this);
             LinearLayout thumbs = Ui.hbox(this);
             hs.addView(thumbs);
             c.addView(hs, Ui.matchWrap(this, 8));
+            if (!d.profile.facePhoto.isEmpty()) {
+                thumbnail(thumbs, d.profile.facePhoto);
+                if (thumbs.getChildCount() > 0) {
+                    View enrolled = thumbs.getChildAt(0);
+                    enrolled.setPadding(Ui.dp(this, 3), Ui.dp(this, 3), Ui.dp(this, 3), Ui.dp(this, 3));
+                    enrolled.setBackground(Ui.rounded(this, Ui.PRIMARY, 6));
+                    enrolled.setContentDescription("Enrolled face");
+                }
+            }
             for (String path : r.evidence) thumbnail(thumbs, path);
             LinearLayout a = Ui.row(c);
             Ui.button(a, "Approve", Ui.GOOD, v -> { r.verification = Verification.PHARMACIST_APPROVED; Store.save(this); render(); });
@@ -1111,6 +1179,13 @@ public class MainActivity extends Activity {
                 recreate();
             });
         }
+
+        CheckBox voice = Ui.check(c, "Voice guidance: speak instructions when taking a dose", s.voiceGuidance);
+        voice.setOnCheckedChangeListener((btn, on) -> {
+            s.voiceGuidance = on;
+            Store.save(this);
+            if (on) Voice.say(this, "Voice guidance is on.");
+        });
 
         int numType = InputType.TYPE_CLASS_NUMBER;
         EditText grace = Ui.field(c, "Minutes before a dose counts as missed", "120", String.valueOf(s.graceMinutes), numType);

@@ -14,9 +14,13 @@ public final class Profile {
     public String doctor = "";        // doctor or pharmacy, free text
     public String emergencyName = "";
     public String emergencyPhone = "";
+    public String facePhoto = "";      // enrolment photo taken with face detection, "" if none
+    public double[] faceSignature;     // FaceSignature of the enrolled face, or null
 
     /** A profile exists once the patient has entered at least a name. */
     public boolean isComplete() { return name != null && !name.trim().isEmpty(); }
+
+    public boolean hasFace() { return faceSignature != null && faceSignature.length > 0; }
 
     /** Age in whole years, or null when the date of birth is missing or in the future. */
     public Integer age(LocalDate today) {
@@ -65,6 +69,7 @@ public final class Profile {
         p.name = name; p.dateOfBirth = dateOfBirth; p.sex = sex; p.phone = phone;
         p.conditions = conditions; p.allergies = allergies; p.doctor = doctor;
         p.emergencyName = emergencyName; p.emergencyPhone = emergencyPhone;
+        p.facePhoto = facePhoto; p.faceSignature = faceSignature == null ? null : faceSignature.clone();
         return p;
     }
 }

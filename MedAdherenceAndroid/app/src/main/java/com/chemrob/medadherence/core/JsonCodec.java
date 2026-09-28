@@ -46,11 +46,12 @@ public final class JsonCodec {
             root.put("profile", new JSONObject().put("name", pr.name).put("dateOfBirth", pr.dateOfBirth)
                     .put("sex", pr.sex).put("phone", pr.phone).put("conditions", pr.conditions)
                     .put("allergies", pr.allergies).put("doctor", pr.doctor)
-                    .put("emergencyName", pr.emergencyName).put("emergencyPhone", pr.emergencyPhone));
+                    .put("emergencyName", pr.emergencyName).put("emergencyPhone", pr.emergencyPhone)
+                    .put("facePhoto", pr.facePhoto).put("faceSignature", pr.faceSignature == null ? null : doubles(pr.faceSignature)));
             root.put("settings", new JSONObject().put("graceMinutes", s.graceMinutes)
                     .put("onTimeWindowMinutes", s.onTimeWindowMinutes).put("snoozeMinutes", s.snoozeMinutes)
                     .put("pharmacistPin", s.pharmacistPin).put("lockEditingWithPin", s.lockEditingWithPin)
-                    .put("patientName", s.patientName).put("theme", s.theme));
+                    .put("patientName", s.patientName).put("theme", s.theme).put("voiceGuidance", s.voiceGuidance));
             return root.toString(1);
         } catch (JSONException e) {
             throw new IllegalStateException(e);
@@ -121,6 +122,12 @@ public final class JsonCodec {
             pr.doctor = p.optString("doctor", "");
             pr.emergencyName = p.optString("emergencyName", "");
             pr.emergencyPhone = p.optString("emergencyPhone", "");
+            pr.facePhoto = p.optString("facePhoto", "");
+            JSONArray sig = p.optJSONArray("faceSignature");
+            if (sig != null && sig.length() > 0) {
+                pr.faceSignature = new double[sig.length()];
+                for (int i = 0; i < sig.length(); i++) pr.faceSignature[i] = sig.optDouble(i, 0);
+            }
         }
         JSONObject s = root.optJSONObject("settings");
         if (s != null) {
@@ -131,9 +138,16 @@ public final class JsonCodec {
             d.settings.lockEditingWithPin = s.optBoolean("lockEditingWithPin", false);
             d.settings.patientName = s.optString("patientName", "");
             d.settings.theme = s.optString("theme", "system");
+            d.settings.voiceGuidance = s.optBoolean("voiceGuidance", true);
         }
         if (!d.profile.isComplete() && !d.settings.patientName.isEmpty()) d.profile.name = d.settings.patientName;
         return d;
+    }
+
+    private static JSONArray doubles(double[] v) throws JSONException {
+        JSONArray a = new JSONArray();
+        for (double d : v) a.put(d);
+        return a;
     }
 
     private static List<String> strings(JSONArray a) {
