@@ -37,6 +37,7 @@ import com.chemrob.medadherence.core.AppData;
 import com.chemrob.medadherence.core.DoseKey;
 import com.chemrob.medadherence.core.DoseRecord;
 import com.chemrob.medadherence.core.DoseStatus;
+import com.chemrob.medadherence.core.FaceMatch;
 import com.chemrob.medadherence.core.FaceSignature;
 import com.chemrob.medadherence.core.FrameObs;
 import com.chemrob.medadherence.core.IntakeRules;
@@ -68,6 +69,10 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
 
     private Vision vision;
     private double[] enrolledFace;
+    private List<float[]> enrolledViews;   // face fingerprints from the profile scan (may be empty)
+    private FaceRecognizer recognizer;     // null: no model, or patient not enrolled with it
+    private long lastRecognitionAt;
+    private double lastSim = Double.NaN;
     private final List<FrameObs> stepFrames = new ArrayList<>(), allFrames = new ArrayList<>();
     private final List<IntakeRules.StepResult> results = new ArrayList<>();
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -119,6 +124,8 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         if (med == null) { finish(); return; }
         Notifications.cancel(this, key); // stop the ringing while the patient is on camera
         enrolledFace = Store.get(this).profile.faceSignature;
+        enrolledViews = Store.get(this).profile.faceEmbeddings;
+        if (Store.get(this).profile.hasFaceRecognition()) recognizer = FaceRecognizer.get(this);
         vision = new Vision(true);
 
         FrameLayout root = new FrameLayout(this);
@@ -235,7 +242,12 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         FrameObs last = stepFrames.isEmpty() ? null : stepFrames.get(stepFrames.size() - 1);
         StringBuilder sb = new StringBuilder();
         sb.append(last != null && last.oneFace() ? "[OK] face" : "[ .. ] face");
-        if (enrolledFace != null && last != null && last.signature != null)
+        if (recognizer != null) {
+            if (!Double.isNaN(lastSim))
+                sb.append(FaceMatch.isMatch(lastSim)
+                        ? String.format(Locale.ROOT, "   [OK] it's you (%.0f%%)", lastSim * 100)
+                        : "   [ !! ] not recognised");
+        } else if (enrolledFace != null && last != null && last.signature != null)
             sb.append(FaceSignature.matches(enrolledFace, last.signature) ? "   [OK] it's you" : "   [ .. ] face match");
         if (r.passed) sb.append("\n[OK] step confirmed");
         else if (elapsed > 2000 && !r.missing.isEmpty()) sb.append("\nNeed: ").append(String.join(", ", r.missing));
@@ -258,6 +270,21 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
             if (finished || s != step) return;
             stepFrames.add(obs);
             allFrames.add(obs);
+            recognise(data, obs, face);
+        });
+    }
+
+    /** Every ~0.7 s, checks the face in view against the patient's enrolled face fingerprints. */
+    private void recognise(byte[] frame, FrameObs obs, com.google.mlkit.vision.face.Face face) {
+        if (recognizer == null || face == null || !obs.oneFace() || recognizer.busy()) return;
+        if (System.currentTimeMillis() - lastRecognitionAt < 700) return;
+        double[] pts = Vision.alignPoints(face);
+        if (pts == null) return;
+        lastRecognitionAt = System.currentTimeMillis();
+        recognizer.embedAsync(frame, previewW, previewH, cameraOrientation, pts, e -> {
+            if (e == null || finished) return;
+            obs.faceSim = FaceMatch.best(enrolledViews, e); // obs is already in allFrames
+            lastSim = obs.faceSim;
         });
     }
 
@@ -295,7 +322,7 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
     private void complete() {
         finished = true;
         releaseCamera();
-        IntakeRules.Verdict v = IntakeRules.verdict(results, allFrames, enrolledFace);
+        IntakeRules.Verdict v = IntakeRules.verdict(results, allFrames, enrolledFace, recognizer != null);
         AppData data = Store.get(this);
         DoseRecord rec = ScheduleEngine.record(data, key, DoseStatus.TAKEN, LocalDateTime.now());
         if (rec != null) {

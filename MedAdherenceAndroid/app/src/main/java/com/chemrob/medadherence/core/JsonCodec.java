@@ -47,7 +47,7 @@ public final class JsonCodec {
                     .put("sex", pr.sex).put("phone", pr.phone).put("conditions", pr.conditions)
                     .put("allergies", pr.allergies).put("doctor", pr.doctor)
                     .put("emergencyName", pr.emergencyName).put("emergencyPhone", pr.emergencyPhone)
-                    .put("facePhoto", pr.facePhoto).put("faceSignature", pr.faceSignature == null ? null : doubles(pr.faceSignature)));
+                    .put("facePhoto", pr.facePhoto).put("faceEmbeddings", embeddings(pr.faceEmbeddings)).put("faceSignature", pr.faceSignature == null ? null : doubles(pr.faceSignature)));
             root.put("settings", new JSONObject().put("graceMinutes", s.graceMinutes)
                     .put("onTimeWindowMinutes", s.onTimeWindowMinutes).put("snoozeMinutes", s.snoozeMinutes)
                     .put("pharmacistPin", s.pharmacistPin).put("lockEditingWithPin", s.lockEditingWithPin)
@@ -123,6 +123,14 @@ public final class JsonCodec {
             pr.emergencyName = p.optString("emergencyName", "");
             pr.emergencyPhone = p.optString("emergencyPhone", "");
             pr.facePhoto = p.optString("facePhoto", "");
+            JSONArray embs = p.optJSONArray("faceEmbeddings");
+            for (int i = 0; embs != null && i < embs.length(); i++) {
+                JSONArray e = embs.optJSONArray(i);
+                if (e == null || e.length() == 0) continue;
+                float[] v = new float[e.length()];
+                for (int k = 0; k < v.length; k++) v[k] = (float) e.optDouble(k, 0);
+                pr.faceEmbeddings.add(v);
+            }
             JSONArray sig = p.optJSONArray("faceSignature");
             if (sig != null && sig.length() > 0) {
                 pr.faceSignature = new double[sig.length()];
@@ -142,6 +150,16 @@ public final class JsonCodec {
         }
         if (!d.profile.isComplete() && !d.settings.patientName.isEmpty()) d.profile.name = d.settings.patientName;
         return d;
+    }
+
+    private static JSONArray embeddings(List<float[]> list) throws JSONException {
+        JSONArray a = new JSONArray();
+        if (list != null) for (float[] e : list) {
+            JSONArray row = new JSONArray();
+            for (float f : e) row.put((double) Math.round(f * 1e5) / 1e5);
+            a.put(row);
+        }
+        return a;
     }
 
     private static JSONArray doubles(double[] v) throws JSONException {

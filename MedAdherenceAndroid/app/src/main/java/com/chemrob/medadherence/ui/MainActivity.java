@@ -320,9 +320,14 @@ public class MainActivity extends Activity {
         } else fr.addView(Ui.iconCircle(this, R.drawable.ic_person, Ui.PRIMARY_CONTAINER, Ui.ON_PRIMARY_CONTAINER, 84));
         LinearLayout ft = Ui.vbox(this);
         fr.addView(ft, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        Ui.text(ft, p.hasFace() ? "Face saved" : "Face scan needed", 18, p.hasFace() ? Ui.GOOD : Ui.INK, true);
-        Ui.text(ft, "Face detection checks that it is you taking camera-observed doses. It stays on this phone.", 15, Ui.MUTED, false);
-        Ui.button(fc, p.hasFace() ? "Scan again" : "Scan my face", p.hasFace() ? Ui.SURFACE_VARIANT : Ui.PRIMARY, v -> {
+        boolean recog = p.hasFaceRecognition();
+        Ui.text(ft, recog ? "Face recognition on" : p.hasFace() ? "Face saved - scan again" : "Face scan needed", 18,
+                recog ? Ui.GOOD : Ui.INK, true);
+        Ui.text(ft, recog ? "Learned from " + p.faceEmbeddings.size() + " views. The app recognises you during "
+                        + "camera-observed doses, like a phone's face unlock. It stays on this phone."
+                : "A short guided scan (look straight, turn a little each way, blink) so the app can recognise "
+                        + "you during camera-observed doses. It stays on this phone.", 15, Ui.MUTED, false);
+        Ui.button(fc, recog ? "Scan again" : "Scan my face", recog ? Ui.SURFACE_VARIANT : Ui.PRIMARY, v -> {
             if (profileCapture != null) profileCapture.run();
             startActivityForResult(FaceEnrollActivity.intent(this), REQ_FACE);
         });
@@ -410,6 +415,11 @@ public class MainActivity extends Activity {
 
     // ================================================================== Today
 
+    private static boolean hasObservedMed(AppData d) {
+        for (Medication m : d.medications) if (m.observed) return true;
+        return false;
+    }
+
     private void buildToday() {
         AppData d = data();
         LocalDateTime now = LocalDateTime.now();
@@ -426,6 +436,14 @@ public class MainActivity extends Activity {
             Ui.button(c, "Add a medicine", Ui.PRIMARY, v -> editMedication(null));
             Ui.button(c, "Pharmacist: load a full prescription", Ui.SURFACE, v -> show(Tab.PHARMACIST));
             return;
+        }
+
+        if (!d.profile.hasFaceRecognition() && FaceEnrollActivity.hasFrontCamera() && hasObservedMed(d)) {
+            LinearLayout c = Ui.card(body, Ui.PRIMARY_CONTAINER);
+            Ui.text(c, "New: face recognition", 18, Ui.ON_PRIMARY_CONTAINER, true);
+            Ui.text(c, "Scan your face once more so the app can recognise you, not just see a face, "
+                    + "during camera-observed doses.", 16, Ui.ON_PRIMARY_CONTAINER, false);
+            Ui.button(c, "Scan my face", Ui.PRIMARY, v -> showProfileForm(false));
         }
 
         for (Medication m : d.medications) {
@@ -805,7 +823,8 @@ public class MainActivity extends Activity {
             if (result == RESULT_OK && intent != null && profileDraft != null) {
                 profileDraft.facePhoto = intent.getStringExtra(FaceEnrollActivity.EXTRA_PATH);
                 profileDraft.faceSignature = intent.getDoubleArrayExtra(FaceEnrollActivity.EXTRA_SIGNATURE);
-                toast("Face saved");
+                profileDraft.faceEmbeddings = FaceEnrollActivity.embeddings(intent);
+                toast(profileDraft.hasFaceRecognition() ? "Face learned" : "Face saved");
             }
             if (profileDraft != null) showProfileForm(profileOnboarding);
             return;

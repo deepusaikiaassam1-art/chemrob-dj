@@ -2,6 +2,8 @@ package com.chemrob.medadherence.core;
 
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.ArrayList;
+import java.util.List;
 
 /** The patient's profile, created on first launch and shown on reports. */
 public final class Profile {
@@ -15,12 +17,16 @@ public final class Profile {
     public String emergencyName = "";
     public String emergencyPhone = "";
     public String facePhoto = "";      // enrolment photo taken with face detection, "" if none
-    public double[] faceSignature;     // FaceSignature of the enrolled face, or null
+    public double[] faceSignature;     // FaceSignature of the enrolled face, or null (older scans)
+    public List<float[]> faceEmbeddings = new ArrayList<>(); // face-recognition fingerprints of the enrolled views
 
     /** A profile exists once the patient has entered at least a name. */
     public boolean isComplete() { return name != null && !name.trim().isEmpty(); }
 
-    public boolean hasFace() { return faceSignature != null && faceSignature.length > 0; }
+    public boolean hasFace() { return hasFaceRecognition() || (faceSignature != null && faceSignature.length > 0); }
+
+    /** True when the face was enrolled with the recognition model (not just the older geometry check). */
+    public boolean hasFaceRecognition() { return faceEmbeddings != null && !faceEmbeddings.isEmpty(); }
 
     /** Age in whole years, or null when the date of birth is missing or in the future. */
     public Integer age(LocalDate today) {
@@ -70,6 +76,8 @@ public final class Profile {
         p.conditions = conditions; p.allergies = allergies; p.doctor = doctor;
         p.emergencyName = emergencyName; p.emergencyPhone = emergencyPhone;
         p.facePhoto = facePhoto; p.faceSignature = faceSignature == null ? null : faceSignature.clone();
+        p.faceEmbeddings = new ArrayList<>();
+        if (faceEmbeddings != null) for (float[] e : faceEmbeddings) p.faceEmbeddings.add(e.clone());
         return p;
     }
 }

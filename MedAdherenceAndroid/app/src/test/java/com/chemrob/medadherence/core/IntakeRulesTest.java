@@ -84,7 +84,10 @@ public class IntakeRulesTest {
         FrameObs mouth = face(); mouth.handToMouth = 0.4; mouth.mouthOpen = 0.3;
         FrameObs drink = face(); drink.handToMouth = 0.4; drink.pitch = 12;
         FrameObs wide = face(); wide.mouthOpen = 0.5;
-        allPass.add(IntakeRules.evaluate(IntakeRules.Step.FACE, Arrays.asList(face())));
+        FrameObs left = face(); left.yaw = -12;
+        FrameObs right = face(); right.yaw = 12;
+        assertFalse(IntakeRules.evaluate(IntakeRules.Step.FACE, Arrays.asList(face())).passed); // no head turn
+        allPass.add(IntakeRules.evaluate(IntakeRules.Step.FACE, Arrays.asList(face(), left, right)));
         allPass.add(IntakeRules.evaluate(IntakeRules.Step.SHOW, Arrays.asList(showing)));
         allPass.add(IntakeRules.evaluate(IntakeRules.Step.MOUTH, Arrays.asList(mouth)));
         allPass.add(IntakeRules.evaluate(IntakeRules.Step.DRINK, Arrays.asList(drink)));

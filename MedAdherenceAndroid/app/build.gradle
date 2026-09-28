@@ -10,13 +10,18 @@ android {
         applicationId 'com.chemrob.medadherence'
         minSdk 26
         targetSdk 34
-        versionCode 6
-        versionName '1.4.0'
+        versionCode 7
+        versionName '1.5.0'
 
         // Phones only: ML Kit's native AI libraries are large, and the x86 copies only serve PC emulators.
         ndk {
             abiFilters 'arm64-v8a', 'armeabi-v7a'
         }
+    }
+
+    androidResources {
+        // The face-recognition model is memory-mapped straight from the APK, so it must be stored uncompressed.
+        noCompress 'tflite'
     }
 
     packagingOptions {
@@ -71,6 +76,8 @@ dependencies {
     // On-device AI (Google ML Kit, bundled models: works offline, nothing is uploaded).
     implementation 'com.google.mlkit:face-detection:16.1.7'
     implementation 'com.google.mlkit:pose-detection:18.0.0-beta5'
+    // Face recognition (SFace model in assets/, run on the phone with TensorFlow Lite).
+    implementation 'org.tensorflow:tensorflow-lite:2.16.1'
 
     // JVM unit tests.
     testImplementation 'junit:junit:4.13.2'
