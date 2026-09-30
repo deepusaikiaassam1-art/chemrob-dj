@@ -34,16 +34,26 @@ public final class Voice {
     public static boolean enabled(Context c) { return Store.get(c).settings.voiceGuidance; }
 
     /** Speaks now, replacing anything still being said. The template is English; it is translated. */
-    public static void say(Context c, String template, Object... args) { speak(c, template, args, true); }
+    public static void say(Context c, String template, Object... args) { speak(c, template, args, true, false); }
 
     /** Speaks after whatever is already queued. */
-    public static void then(Context c, String template, Object... args) { speak(c, template, args, false); }
+    public static void then(Context c, String template, Object... args) { speak(c, template, args, false, false); }
 
     /** Speaks text as it is (a name or instructions the user typed). */
-    public static void sayRaw(Context c, String text) { speak(c, "%s", new Object[]{text}, false); }
+    public static void sayRaw(Context c, String text) { speak(c, "%s", new Object[]{text}, false, false); }
 
     /** The app's language changed: pick the voice again before the next sentence. */
-    static void languageChanged() { languageSet = false; }
+    static void languageChanged() { languageSet = false; override = null; }
+
+    private static String override; // a language asked for once (welcome screen), instead of the app's
+
+    /** Speaks a sentence in a given language, e.g. so a patient can hear each choice before picking one. */
+    public static synchronized void sayIn(Context c, String language, String template) {
+        override = language;
+        languageSet = false;
+        if (tts != null && ready) { chooseLanguage(); tts.speak(phrase(template), TextToSpeech.QUEUE_FLUSH, null, "ma" + System.nanoTime()); }
+        else speak(c, template, new Object[0], true, true);
+    }
 
     /** Translation into the language actually being spoken. */
     static synchronized String phrase(String template, Object... args) {
@@ -72,7 +82,7 @@ public final class Voice {
 
     private static synchronized void chooseLanguage() {
         if (languageSet || tts == null || !ready) return;
-        String want = I18n.lang();
+        String want = override != null ? override : I18n.lang();
         String[] chain = want.equals("as") ? new String[]{"as", "bn", "hi", "en"} : want.equals("en") ? new String[]{"en"} : new String[]{want, "en"};
         for (String code : chain) {
             Locale loc = code.equals("en") ? new Locale("en", "IN") : Locale.forLanguageTag(code + "-IN");
@@ -87,8 +97,9 @@ public final class Voice {
         languageSet = true;
     }
 
-    private static synchronized void speak(Context c, String template, Object[] args, boolean flush) {
-        if (template == null || template.isEmpty() || !enabled(c)) return;
+    private static synchronized void speak(Context c, String template, Object[] args, boolean flush, boolean always) {
+        if (template == null || template.isEmpty() || (!always && !enabled(c))) return;
+        if (!always && override != null) { override = null; languageSet = false; }
         if (tts == null) {
             app = c.getApplicationContext();
             tts = new TextToSpeech(app, status -> {

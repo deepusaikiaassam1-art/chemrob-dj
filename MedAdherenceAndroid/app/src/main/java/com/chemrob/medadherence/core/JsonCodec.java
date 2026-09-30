@@ -59,7 +59,7 @@ public final class JsonCodec {
                     .put("onTimeWindowMinutes", s.onTimeWindowMinutes).put("snoozeMinutes", s.snoozeMinutes)
                     .put("pharmacistPin", s.pharmacistPin).put("lockEditingWithPin", s.lockEditingWithPin)
                     .put("patientName", s.patientName).put("theme", s.theme).put("voiceGuidance", s.voiceGuidance)
-                    .put("language", s.language).put("caregiverMissedAlerts", s.caregiverMissedAlerts)
+                    .put("language", s.language).put("secondLanguage", s.secondLanguage).put("languageChosen", s.languageChosen).put("caregiverMissedAlerts", s.caregiverMissedAlerts)
                     .put("caregiverDailySummary", s.caregiverDailySummary).put("summaryHour", s.summaryHour)
                     .put("caregiverLastCheck", s.caregiverLastCheck).put("lastCheckIn", s.lastCheckIn));
             return root.toString(1);
@@ -173,6 +173,9 @@ public final class JsonCodec {
             d.settings.theme = s.optString("theme", "system");
             d.settings.voiceGuidance = s.optBoolean("voiceGuidance", true);
             d.settings.language = s.optString("language", "system");
+            d.settings.secondLanguage = s.optString("secondLanguage", "");
+            // Patients who used an older version have already been through set-up.
+            d.settings.languageChosen = s.optBoolean("languageChosen", true);
             d.settings.caregiverMissedAlerts = s.optBoolean("caregiverMissedAlerts", true);
             d.settings.caregiverDailySummary = s.optBoolean("caregiverDailySummary", false);
             d.settings.summaryHour = Math.max(0, Math.min(23, s.optInt("summaryHour", 21)));

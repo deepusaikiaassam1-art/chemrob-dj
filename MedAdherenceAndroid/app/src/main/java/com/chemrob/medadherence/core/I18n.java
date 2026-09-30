@@ -31,6 +31,25 @@ public final class I18n {
 
     public static String lang() { return lang; }
 
+    private static Map<String, String> table2 = Collections.emptyMap();
+    private static String lang2 = "";
+
+    /** A second language shown under the main buttons ("" = none). */
+    public static synchronized void setSecond(String language, Map<String, String> translations) {
+        lang2 = language == null ? "" : language;
+        table2 = translations == null ? Collections.emptyMap() : translations;
+    }
+
+    public static String secondLang() { return lang2; }
+
+    /** The text in the second language, or null when there is none or it matches the main language. */
+    public static String t2(String english) {
+        if (english == null || lang2.isEmpty() || lang2.equals(lang)) return null;
+        if (lang2.equals("en")) return english;
+        String s = table2.get(english);
+        return s == null || s.isEmpty() ? null : s;
+    }
+
     public static Locale locale() { return "en".equals(lang) ? Locale.getDefault() : Locale.forLanguageTag(lang + "-IN"); }
 
     /** Resolves "system" to a supported language code, from the phone's language. */

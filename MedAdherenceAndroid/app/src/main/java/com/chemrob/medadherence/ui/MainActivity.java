@@ -91,7 +91,7 @@ import static com.chemrob.medadherence.core.I18n.tf;
  */
 public class MainActivity extends Activity {
     private enum Tab { TODAY, MEDICINES, DOCTOR, ADHERENCE, PHARMACIST }
-    private enum Mode { TABS, MED_FORM, PROFILE, VISIT_FORM }
+    private enum Mode { TABS, MED_FORM, PROFILE, VISIT_FORM, WELCOME }
 
     /** A dose may be marked taken up to this long before its scheduled time. */
     private static final int EARLY_WINDOW_MIN = 120;
@@ -100,6 +100,7 @@ public class MainActivity extends Activity {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView headerTitle, headerSub;
+    private LinearLayout headerRow;
     private FrameLayout avatar;
     private LinearLayout body, nav;
     private ScrollView scroll;
@@ -136,28 +137,34 @@ public class MainActivity extends Activity {
         root.setBackgroundColor(Ui.BG);
 
         LinearLayout header = Ui.hbox(this);
+        headerRow = header;
         int p = Ui.dp(this, 20);
-        header.setPadding(p, Ui.dp(this, 18), p, Ui.dp(this, 6));
+        header.setPadding(p, Ui.dp(this, 14), p, Ui.dp(this, 6));
+        avatar = new FrameLayout(this);
+        LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 48));
+        al.rightMargin = Ui.dp(this, 12);
+        header.addView(avatar, al);
+        avatar.setOnClickListener(v -> showProfileForm(false));
+        avatar.setContentDescription(t("Profile"));
         LinearLayout titles = Ui.vbox(this);
         header.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        headerTitle = Ui.text(titles, "", 26, Ui.INK, true);
-        headerSub = Ui.text(titles, "", 16, Ui.MUTED, false);
+        headerTitle = Ui.text(titles, "", 23, Ui.INK, true);
+        ((LinearLayout.LayoutParams) headerTitle.getLayoutParams()).topMargin = 0;
+        headerSub = Ui.text(titles, "", 15, Ui.MUTED, false);
+        ((LinearLayout.LayoutParams) headerSub.getLayoutParams()).topMargin = Ui.dp(this, 2);
         TextView sos = new TextView(this);
         sos.setText(t("SOS"));
         sos.setTextColor(android.graphics.Color.WHITE);
-        sos.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        sos.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
         sos.setTypeface(Ui.medium(), Typeface.BOLD);
         sos.setGravity(Gravity.CENTER);
         sos.setBackground(Ui.rounded(this, android.graphics.Color.parseColor("#D93F3F"), 24));
         sos.setElevation(Ui.dp(this, 3));
-        sos.setContentDescription("Emergency: call and text your emergency contact");
-        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(Ui.dp(this, 72), Ui.dp(this, 48));
-        sl.rightMargin = Ui.dp(this, 10);
+        sos.setContentDescription(t("Emergency: call and text your emergency contact"));
+        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(Ui.dp(this, 76), Ui.dp(this, 48));
+        sl.leftMargin = Ui.dp(this, 10);
         header.addView(sos, sl);
         sos.setOnClickListener(v -> startSos());
-        avatar = new FrameLayout(this);
-        header.addView(avatar, new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 48)));
-        avatar.setOnClickListener(v -> showProfileForm(false));
         root.addView(header);
 
         scroll = new ScrollView(this);
@@ -172,7 +179,7 @@ public class MainActivity extends Activity {
         nav.setBackgroundColor(Ui.SURFACE);
         nav.setElevation(Ui.dp(this, 8));
         nav.setPadding(Ui.dp(this, 4), Ui.dp(this, 8), Ui.dp(this, 4), Ui.dp(this, 10));
-        String[] labels = {"Today", "Medicines", "Doctor", "Adherence", "Pharmacy"};
+        String[] labels = {"Today", "Medicines", "Doctor", "Progress", "Pharmacy"};
         int[] icons = {R.drawable.ic_home, R.drawable.ic_pill, R.drawable.ic_calendar, R.drawable.ic_chart, R.drawable.ic_pharmacy};
         for (int i = 0; i < labels.length; i++) navItems.add(navItem(nav, labels[i], icons[i], Tab.values()[i]));
         root.addView(nav);
@@ -188,10 +195,10 @@ public class MainActivity extends Activity {
         FrameLayout pill = new FrameLayout(this);
         ImageView iv = Ui.icon(this, icon, Ui.MUTED, 24);
         pill.addView(iv, new FrameLayout.LayoutParams(Ui.dp(this, 24), Ui.dp(this, 24), Gravity.CENTER));
-        item.addView(pill, new LinearLayout.LayoutParams(Ui.dp(this, 56), Ui.dp(this, 32)));
+        item.addView(pill, new LinearLayout.LayoutParams(Ui.dp(this, 60), Ui.dp(this, 34)));
         TextView tv = new TextView(this);
         tv.setText(t(label));
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         tv.setGravity(Gravity.CENTER);
         tv.setMaxLines(1);
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -206,7 +213,8 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         AlarmScheduler.syncAll(this);
-        if (!data().profile.isComplete()) showProfileForm(true);
+        if (!data().settings.languageChosen) showWelcome();
+        else if (!data().profile.isComplete()) showProfileForm(true);
         else if (mode == Mode.TABS) render();
         handler.postDelayed(ticker, 30_000);
     }
@@ -227,7 +235,7 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (mode == Mode.PROFILE && !data().profile.isComplete()) { super.onBackPressed(); return; }
+        if (mode == Mode.WELCOME || (mode == Mode.PROFILE && !data().profile.isComplete())) { super.onBackPressed(); return; }
         if (mode != Mode.TABS) { mode = Mode.TABS; render(); return; }
         if (tab != Tab.TODAY) { show(Tab.TODAY); return; }
         super.onBackPressed();
@@ -242,15 +250,16 @@ public class MainActivity extends Activity {
 
     private void render() {
         nav.setVisibility(View.VISIBLE);
+        headerRow.setVisibility(View.VISIBLE);
         for (int i = 0; i < navItems.size(); i++) {
             boolean on = Tab.values()[i] == tab;
             LinearLayout item = navItems.get(i);
             FrameLayout pill = (FrameLayout) item.getChildAt(0);
-            pill.setBackground(on ? Ui.rounded(this, Ui.PRIMARY_CONTAINER, 16) : null);
+            pill.setBackground(on ? Ui.rounded(this, Ui.PRIMARY_CONTAINER, 17) : null);
             ((ImageView) pill.getChildAt(0)).setImageTintList(android.content.res.ColorStateList.valueOf(on ? Ui.ON_PRIMARY_CONTAINER : Ui.MUTED));
             TextView tv = (TextView) item.getChildAt(1);
-            tv.setTextColor(on ? Ui.INK : Ui.MUTED);
-            tv.setTypeface(on ? Ui.medium() : Typeface.DEFAULT, on ? Typeface.BOLD : Typeface.NORMAL);
+            tv.setTextColor(on ? Ui.ON_PRIMARY_CONTAINER : Ui.MUTED);
+            tv.setTypeface(on ? Ui.medium() : Ui.regular(), on ? Typeface.BOLD : Typeface.NORMAL);
         }
         drawAvatar();
         body.removeAllViews();
@@ -305,6 +314,122 @@ public class MainActivity extends Activity {
 
     // ================================================================== Profile
 
+    // ================================================================== Welcome
+
+    /** First launch: which language the patient reads best, each one read out on request. */
+    private void showWelcome() {
+        mode = Mode.WELCOME;
+        nav.setVisibility(View.GONE);
+        headerRow.setVisibility(View.GONE);
+        body.removeAllViews();
+        String phone = I18n.resolve("system", Locale.getDefault().getLanguage());
+        if (welcomePick == null) welcomePick = phone;
+
+        LinearLayout top = Ui.vbox(this);
+        top.setPadding(Ui.dp(this, 8), Ui.dp(this, 28), Ui.dp(this, 8), 0);
+        body.addView(top);
+        FrameLayout logo = new FrameLayout(this);
+        logo.setBackground(Ui.rounded(this, Ui.PRIMARY, 22));
+        ImageView mark = new ImageView(this);
+        mark.setImageResource(R.drawable.ic_launcher_foreground);
+        mark.setRotation(-40);
+        logo.addView(mark, new FrameLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96), Gravity.CENTER));
+        logo.setClipToOutline(true);
+        top.addView(logo, new LinearLayout.LayoutParams(Ui.dp(this, 72), Ui.dp(this, 72)));
+        TextView title = Ui.text(top, "Welcome to MedAdherence", 32, Ui.INK, true);
+        ((LinearLayout.LayoutParams) title.getLayoutParams()).topMargin = Ui.dp(this, 20);
+        Ui.text(top, "Which language do you read best? Tap the speaker to hear it.", 19, Ui.MUTED, false);
+
+        String[] order = {"as", "hi", "bn", "en"};
+        String[][] names = {{"অসমীয়া", "Assamese"}, {"हिन्दी", "Hindi"}, {"বাংলা", "Bengali"}, {"English", "English"}};
+        for (int i = 0; i < order.length; i++) {
+            String code = order[i];
+            boolean on = code.equals(welcomePick);
+            LinearLayout card = Ui.hbox(this);
+            GradientDrawable bg = new GradientDrawable();
+            bg.setColor(Ui.SURFACE);
+            bg.setCornerRadius(Ui.dp(this, 22));
+            bg.setStroke(Ui.dp(this, 3), on ? Ui.PRIMARY : Ui.SURFACE);
+            card.setBackground(bg);
+            card.setPadding(Ui.dp(this, 20), Ui.dp(this, 14), Ui.dp(this, 16), Ui.dp(this, 14));
+            card.setMinimumHeight(Ui.dp(this, 84));
+            LinearLayout.LayoutParams cl = Ui.matchWrap(this, i == 0 ? 22 : 12);
+            body.addView(card, cl);
+            LinearLayout names2 = Ui.vbox(this);
+            card.addView(names2, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            TextView n1 = Ui.text(names2, "", 26, Ui.INK, true);
+            n1.setText(names[i][0]);
+            ((LinearLayout.LayoutParams) n1.getLayoutParams()).topMargin = 0;
+            TextView n2 = Ui.text(names2, "", 15, Ui.MUTED, false);
+            n2.setText(names[i][1]);
+            ((LinearLayout.LayoutParams) n2.getLayoutParams()).topMargin = 0;
+            FrameLayout speak = new FrameLayout(this);
+            GradientDrawable sg = new GradientDrawable();
+            sg.setShape(GradientDrawable.OVAL);
+            sg.setColor(Ui.SURFACE_VARIANT);
+            speak.setBackground(sg);
+            speak.addView(Ui.icon(this, R.drawable.ic_volume, Ui.PRIMARY, 24), new FrameLayout.LayoutParams(Ui.dp(this, 24), Ui.dp(this, 24), Gravity.CENTER));
+            speak.setContentDescription(tf("Hear %s", names[i][1]));
+            speak.setOnClickListener(v -> Voice.sayIn(this, code, "Welcome to MedAdherence. Tap Continue to use this language."));
+            LinearLayout.LayoutParams spl = new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 48));
+            spl.rightMargin = Ui.dp(this, 14);
+            card.addView(speak, spl);
+            FrameLayout tick = new FrameLayout(this);
+            GradientDrawable tg = new GradientDrawable();
+            tg.setShape(GradientDrawable.OVAL);
+            tg.setColor(on ? Ui.PRIMARY : Ui.SURFACE_VARIANT);
+            tick.setBackground(tg);
+            tick.addView(Ui.icon(this, R.drawable.ic_check, on ? Ui.ON_PRIMARY : Ui.LINE, 20), new FrameLayout.LayoutParams(Ui.dp(this, 20), Ui.dp(this, 20), Gravity.CENTER));
+            card.addView(tick, new LinearLayout.LayoutParams(Ui.dp(this, 32), Ui.dp(this, 32)));
+            card.setContentDescription(names[i][1] + (on ? ", " + t("selected") : ""));
+            card.setOnClickListener(v -> { welcomePick = code; showWelcome(); });
+        }
+
+        TextView later = Ui.text(body, "You can change this later in your profile.", 15, Ui.MUTED, false);
+        later.setGravity(Gravity.CENTER);
+        ((LinearLayout.LayoutParams) later.getLayoutParams()).topMargin = Ui.dp(this, 24);
+        Button go = Ui.button(body, "Continue", Ui.PRIMARY, v -> {
+            com.chemrob.medadherence.core.Settings s = data().settings;
+            s.language = welcomePick;
+            // English underneath the main buttons helps family and staff who read English.
+            s.secondLanguage = welcomePick.equals("en") ? "" : "en";
+            s.languageChosen = true;
+            Store.save(this);
+            Lang.apply(this, data());
+            recreate();
+        });
+        go.getLayoutParams().height = Ui.dp(this, 64);
+        go.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        scroll.scrollTo(0, 0);
+    }
+
+    private String welcomePick;
+
+    /** The second language written under the main buttons ("I took it" / "মই খালোঁ"). */
+    private void secondLanguagePicker(LinearLayout c) {
+        com.chemrob.medadherence.core.Settings s = data().settings;
+        TextView label = Ui.text(c, "Also show the main buttons in", 14, Ui.MUTED, true);
+        ((LinearLayout.LayoutParams) label.getLayoutParams()).topMargin = Ui.dp(this, 16);
+        List<String[]> options = new ArrayList<>();
+        options.add(new String[]{"", t("No second language")});
+        for (String[] l : I18n.LANGUAGES) options.add(l);
+        LinearLayout row = null;
+        for (int i = 0; i < options.size(); i++) {
+            if (i % 2 == 0) row = Ui.row(c);
+            String[] o = options.get(i);
+            Button chip = Ui.chip(row, o[1], s.secondLanguage.equals(o[0]), v -> {
+                if (s.secondLanguage.equals(o[0])) return;
+                if (profileCapture != null) profileCapture.run();
+                s.secondLanguage = o[0];
+                Store.save(this);
+                Lang.apply(this, data());
+                showProfileForm(false);
+            });
+            chip.setText(o[1]);
+        }
+        if (row != null && row.getChildCount() == 1) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+    }
+
     /** The patient's profile. On first launch this is the only screen until a name is saved. */
     private void showProfileForm(boolean onboarding) {
         mode = Mode.PROFILE;
@@ -323,9 +448,12 @@ public class MainActivity extends Activity {
             r.addView(Ui.iconCircle(this, R.drawable.ic_person, Ui.PRIMARY, Ui.ON_PRIMARY, 56));
             Ui.text(r, "Your profile helps your pharmacist and doctor read your adherence reports, and keeps "
                     + "allergy and emergency details in one place.", 16, Ui.ON_PRIMARY_CONTAINER, false);
-            languagePicker(hero);
         } else {
             header("Profile", p.isComplete() ? p.summary(today) : "");
+            Ui.section(body, "Language");
+            LinearLayout lc = Ui.card(body, Ui.SURFACE);
+            languagePicker(lc);
+            secondLanguagePicker(lc);
         }
 
         Ui.section(body, "Face scan");
@@ -613,68 +741,157 @@ public class MainActivity extends Activity {
         Appointment visit = Appointment.next(d.appointments, now);
         if (visit != null && visit.time().isBefore(now.plusDays(14))) visitCard(body, visit, now, false);
 
-        rewardsCard(d, now);
+        if (!doses.isEmpty()) pillbox(d, now);
+        streakCard(d, now);
         quickHelp(d, now);
-
-        // Progress ring.
-        int taken = 0, settled = 0;
-        for (ScheduledDose x : doses) {
-            DoseStatus s = ScheduleEngine.statusOf(d, x, now);
-            if (s == DoseStatus.TAKEN) taken++;
-            if (s != DoseStatus.PENDING && s != DoseStatus.SNOOZED) settled++;
-        }
-        LinearLayout prog = Ui.card(body, Ui.SURFACE);
-        LinearLayout pr = Ui.row(prog);
-        Ui.Ring ring = new Ui.Ring(this);
-        ring.set(doses.isEmpty() ? 0 : (float) taken / doses.size(), taken + "/" + doses.size(), t("today"), Ui.GOOD);
-        LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(Ui.dp(this, 104), Ui.dp(this, 104));
-        rl.rightMargin = Ui.dp(this, 18);
-        pr.addView(ring, rl);
-        LinearLayout pt = Ui.vbox(this);
-        pr.addView(pt, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        Ui.text(pt, doses.isEmpty() ? "Nothing scheduled today"
-                : taken == doses.size() ? t("All done for today") : tf("%d of %d doses taken", taken, doses.size()), 19, Ui.INK, true);
-        double week = AdherenceCalculator.compute(d, now.toLocalDate().minusDays(6).atStartOfDay(), now).overall.takingPercent();
-        TextView wk = Ui.text(pt, tf("Last 7 days: %.0f%%", week), 16, Ui.colorFor(week), true);
-        if (settled > taken) Ui.text(pt, tf("%d missed or skipped today", settled - taken), 15, Ui.MUTED, false);
-        wk.setOnClickListener(v -> show(Tab.ADHERENCE));
+        checkInCard(d, now);
 
         if (!doses.isEmpty()) Ui.section(body, "Today's schedule");
         for (ScheduledDose dose : doses) doseRow(dose, now);
     }
 
-    private void heroDose(ScheduledDose dose, boolean due, LocalDateTime now) {
-        LinearLayout c = Ui.card(body, due ? Ui.DUE_BG : Ui.PRIMARY_CONTAINER);
-        int fg = due ? Ui.INK : Ui.ON_PRIMARY_CONTAINER;
-        String when;
-        if (due) when = t("Due now") + "  ·  " + TimeUtil.clock(dose.time);
-        else {
-            long mins = ChronoUnit.MINUTES.between(now, dose.time);
-            when = t("Next") + "  ·  " + (mins >= 24 * 60 ? dose.time.format(DateTimeFormatter.ofPattern("EEE HH:mm", I18n.locale()))
-                    : TimeUtil.clock(dose.time) + "  " + (mins >= 60 ? tf("(in %d h %d min)", mins / 60, mins % 60) : tf("(in %d min)", Math.max(0, mins))));
+    /** Today's doses as a pillbox: Morning, Noon, Evening, Night, with what is due now highlighted. */
+    private void pillbox(AppData d, LocalDateTime now) {
+        Ui.section(body, "Today's pillbox");
+        LinearLayout row = Ui.row(body);
+        ((LinearLayout.LayoutParams) row.getLayoutParams()).topMargin = Ui.dp(this, 10);
+        for (com.chemrob.medadherence.core.DayPeriod.Slot slot : com.chemrob.medadherence.core.DayPeriod.pillbox(d, now)) {
+            boolean dueNow = slot.due > 0;
+            LinearLayout tile = Ui.vbox(this);
+            tile.setGravity(Gravity.CENTER_HORIZONTAL);
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(Ui.dp(this, 18));
+            bg.setColor(dueNow ? Ui.DUE_BG : Ui.SURFACE);
+            bg.setStroke(Ui.dp(this, 3), dueNow ? Ui.WARN : Ui.SURFACE);
+            tile.setBackground(bg);
+            tile.setPadding(Ui.dp(this, 4), Ui.dp(this, 12), Ui.dp(this, 4), Ui.dp(this, 12));
+            TextView name = Ui.text(tile, slot.period.label, 15, Ui.INK, true);
+            name.setGravity(Gravity.CENTER);
+            name.setMaxLines(1);
+            ((LinearLayout.LayoutParams) name.getLayoutParams()).topMargin = 0;
+            TextView time = Ui.text(tile, "", 13, Ui.MUTED, false);
+            time.setText(slot.empty() ? "–" : slot.time);
+            time.setGravity(Gravity.CENTER);
+            FrameLayout dot = new FrameLayout(this);
+            GradientDrawable dg = new GradientDrawable();
+            dg.setShape(GradientDrawable.OVAL);
+            int ink;
+            if (slot.empty()) { dg.setColor(Ui.SURFACE); ink = Ui.LINE; }
+            else if (dueNow) { dg.setColor(Ui.WARN); ink = Ui.ON_STATUS; }
+            else if (slot.done()) { dg.setColor(Ui.GOOD); ink = Ui.ON_STATUS; }
+            else if (slot.missedSome()) { dg.setColor(Ui.BAD); ink = Ui.ON_STATUS; }
+            else { dg.setColor(Ui.SURFACE); dg.setStroke(Ui.dp(this, 2), Ui.LINE); ink = Ui.MUTED; }
+            dot.setBackground(dg);
+            if (slot.done()) dot.addView(Ui.icon(this, R.drawable.ic_check, ink, 20), new FrameLayout.LayoutParams(Ui.dp(this, 20), Ui.dp(this, 20), Gravity.CENTER));
+            else {
+                TextView n = new TextView(this);
+                n.setText(slot.empty() ? "" : String.valueOf(slot.doses - slot.taken));
+                n.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+                n.setTypeface(Ui.medium(), Typeface.BOLD);
+                n.setTextColor(ink);
+                n.setGravity(Gravity.CENTER);
+                dot.addView(n, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            }
+            LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(Ui.dp(this, 34), Ui.dp(this, 34));
+            dl.topMargin = Ui.dp(this, 10);
+            tile.addView(dot, dl);
+            tile.setContentDescription(t(slot.period.label) + ", " + (slot.empty() ? t("nothing to take")
+                    : tf("%d of %d taken", slot.taken, slot.doses)));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            lp.leftMargin = lp.rightMargin = Ui.dp(this, 4);
+            row.addView(tile, lp);
         }
-        TextView label = Ui.text(c, when.toUpperCase(Locale.ROOT), 14, due ? Ui.WARN : fg, true);
-        label.setLetterSpacing(0.06f);
+    }
+
+    /** "6 full days in a row", the level and the points to the next one. Tapping opens Progress. */
+    private void streakCard(AppData d, LocalDateTime now) {
+        Rewards.State s = Rewards.compute(d, now);
+        LinearLayout c = Ui.card(body, Ui.SURFACE);
+        ((LinearLayout.LayoutParams) c.getLayoutParams()).topMargin = Ui.dp(this, 12);
+        c.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 12));
         LinearLayout r = Ui.row(c);
-        ((LinearLayout.LayoutParams) r.getLayoutParams()).topMargin = Ui.dp(this, 10);
-        r.addView(Ui.drugImage(this, dose.med, 88));
+        ImageView flame = Ui.icon(this, R.drawable.ic_flame, s.currentStreak > 0 ? Ui.WARN : Ui.MUTED, 30);
+        ((LinearLayout.LayoutParams) flame.getLayoutParams()).rightMargin = Ui.dp(this, 12);
+        r.addView(flame);
         LinearLayout t = Ui.vbox(this);
         r.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        Ui.text(t, dose.med.name, 26, fg, true);
-        if (!dose.med.dose.isEmpty()) Ui.text(t, dose.med.dose + sideLabel(dose.med), 18, fg, false);
-        if (!dose.med.instructions.isEmpty()) Ui.text(t, dose.med.instructions, 16, fg, false);
-        courseLine(t, dose.med, now, fg);
+        TextView big = Ui.text(t, s.currentStreak == 0 ? t("Take every dose today to start a streak")
+                : s.currentStreak == 1 ? t("1 full day in a row") : tf("%d full days in a row", s.currentStreak), 18, Ui.INK, true);
+        ((LinearLayout.LayoutParams) big.getLayoutParams()).topMargin = 0;
+        Ui.text(t, tf("Level %d · %s", s.level, t(s.levelName)) + "  ·  " + (s.nextLevelAt < 0 ? t("Top level reached")
+                : tf("%d points to Level %d", s.nextLevelAt - s.points, s.level + 1)), 14, Ui.MUTED, false);
+        c.setOnClickListener(v -> show(Tab.ADHERENCE));
+    }
+
+    private void heroDose(ScheduledDose dose, boolean due, LocalDateTime now) {
+        LinearLayout c = Ui.card(body, due ? Ui.DUE_BG : Ui.PRIMARY_CONTAINER);
+        c.setElevation(0);
+        int fg = due ? Ui.INK : Ui.ON_PRIMARY_CONTAINER;
+        LinearLayout head = Ui.row(c);
+        String when;
+        if (due) when = t("Take now") + " · " + TimeUtil.clock(dose.time);
+        else {
+            long mins = ChronoUnit.MINUTES.between(now, dose.time);
+            when = t("Next") + " · " + (mins >= 24 * 60 ? dose.time.format(DateTimeFormatter.ofPattern("EEE HH:mm", I18n.locale()))
+                    : TimeUtil.clock(dose.time) + "  " + (mins >= 60 ? tf("(in %d h %d min)", mins / 60, mins % 60) : tf("(in %d min)", Math.max(0, mins))));
+        }
+        TextView pill = new TextView(this);
+        pill.setText(when);
+        pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        pill.setTypeface(Ui.medium(), Typeface.BOLD);
+        pill.setTextColor(due ? Ui.ON_STATUS : Ui.ON_PRIMARY);
+        pill.setBackground(Ui.rounded(this, due ? Ui.WARN : Ui.PRIMARY, 12));
+        pill.setPadding(Ui.dp(this, 12), Ui.dp(this, 5), Ui.dp(this, 12), Ui.dp(this, 5));
+        head.addView(pill);
+        TextView period = Ui.text(head, com.chemrob.medadherence.core.DayPeriod.of(dose.time.toLocalTime()).label, 15, Ui.MUTED, false);
+        period.setPadding(Ui.dp(this, 10), 0, 0, 0);
+        ((LinearLayout.LayoutParams) period.getLayoutParams()).topMargin = 0;
+
+        LinearLayout r = Ui.row(c);
+        ((LinearLayout.LayoutParams) r.getLayoutParams()).topMargin = Ui.dp(this, 14);
+        r.setGravity(Gravity.TOP);
+        r.addView(Ui.drugImage(this, dose.med, 92));
+        LinearLayout t = Ui.vbox(this);
+        r.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        TextView name = Ui.text(t, dose.med.name, 26, fg, true);
+        ((LinearLayout.LayoutParams) name.getLayoutParams()).topMargin = 0;
+        if (!dose.med.dose.isEmpty()) Ui.text(t, dose.med.dose + sideLabel(dose.med), 19, fg, false);
+        if (!dose.med.instructions.isEmpty()) Ui.text(t, dose.med.instructions, 16, due ? Ui.MUTED : fg, false);
+        courseLine(t, dose.med, now, due ? Ui.PRIMARY : fg);
         if (!due) return;
         String key = dose.key();
         if (now.isAfter(dose.time.plusMinutes(data().settings.onTimeWindowMinutes))) missedAdvice(c, dose, now);
-        Button main = dose.med.observed
-                ? Ui.button(c, "Take on camera", Ui.GOOD, v -> startActivity(ObserveActivity.intent(this, key)))
-                : Ui.button(c, takeLabel(dose.med), Ui.GOOD, v -> recordAction(key, DoseStatus.TAKEN));
-        main.getLayoutParams().height = Ui.dp(this, 68);
-        main.setTextSize(TypedValue.COMPLEX_UNIT_SP, 21);
+        if (dose.med.observed) {
+            Button cam = Ui.mainButton(c, "Take on camera", Ui.GOOD, v -> startActivity(ObserveActivity.intent(this, key)));
+            cam.getLayoutParams().height += Ui.dp(this, 12);
+            cam.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
+        } else {
+            HoldButton.add(c, takeLabel(dose.med), Ui.GOOD, Ui.ON_STATUS, () -> recordAction(key, DoseStatus.TAKEN));
+        }
         LinearLayout a = Ui.row(c);
-        Ui.button(a, "Snooze", Ui.SURFACE, v -> recordAction(key, DoseStatus.SNOOZED));
-        Ui.button(a, "Skip", Ui.SURFACE, v -> recordAction(key, DoseStatus.SKIPPED));
+        ((LinearLayout.LayoutParams) a.getLayoutParams()).topMargin = Ui.dp(this, 2);
+        if (!dose.med.observed && dose.med.doseForm().observable && FaceEnrollActivity.hasFrontCamera()) {
+            Button cam = Ui.button(a, "On camera", Ui.SURFACE, v -> startActivity(ObserveActivity.intent(this, key)));
+            cam.setTextColor(Ui.INK);
+            android.graphics.drawable.Drawable ic = getDrawable(R.drawable.ic_camera).mutate();
+            ic.setTint(Ui.PRIMARY);
+            ic.setBounds(0, 0, Ui.dp(this, 22), Ui.dp(this, 22));
+            cam.setCompoundDrawablesRelative(ic, null, null, null);
+            cam.setPadding(Ui.dp(this, 18), 0, Ui.dp(this, 12), 0);
+        }
+        Button later = Ui.button(a, "Later", Ui.SURFACE, v -> recordAction(key, DoseStatus.SNOOZED));
+        later.setTextColor(Ui.INK);
+        later.setContentDescription(tf("Later: remind me again in %d minutes", data().settings.snoozeMinutes));
+        if (dose.med.observed) {
+            Button skip = Ui.button(a, "Skip", Ui.SURFACE, v -> recordAction(key, DoseStatus.SKIPPED));
+            skip.setTextColor(Ui.INK);
+        } else {
+            Button skip = Ui.button(c, "Skip this dose", Ui.DUE_BG, v -> recordAction(key, DoseStatus.SKIPPED));
+            skip.setBackground(null);
+            skip.setTextColor(Ui.MUTED);
+            skip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            skip.getLayoutParams().height = Ui.dp(this, 48);
+        }
     }
 
     private String signature(LocalDateTime now) {
@@ -1027,35 +1244,42 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** Badge collection on the Adherence tab: earned ones in colour, the rest with their progress. */
+    /** Badge collection on the Progress tab: earned ones in colour, the rest with their progress. */
     private void badges(Rewards.State s) {
-        Ui.section(body, tf("Badges (%d of %d)", s.earnedCount(), s.badges.size()));
+        Ui.section(body, tf("Badges · %d of %d", s.earnedCount(), s.badges.size()));
         LinearLayout row = null;
         for (int i = 0; i < s.badges.size(); i++) {
             Rewards.Badge b = s.badges.get(i);
-            if (i % 2 == 0) {
+            if (i % 3 == 0) {
                 row = Ui.row(body);
-                ((LinearLayout.LayoutParams) row.getLayoutParams()).topMargin = Ui.dp(this, 10);
+                row.setGravity(Gravity.TOP);
+                ((LinearLayout.LayoutParams) row.getLayoutParams()).topMargin = Ui.dp(this, i == 0 ? 10 : 8);
             }
             LinearLayout cell = Ui.vbox(this);
-            cell.setBackground(Ui.rounded(this, b.earned() ? Ui.GOOD_BG : Ui.SURFACE, 20));
-            int p = Ui.dp(this, 14);
-            cell.setPadding(p, p, p, p);
+            cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            cell.setBackground(Ui.rounded(this, Ui.SURFACE, 18));
+            int p = Ui.dp(this, 10);
+            cell.setPadding(p, Ui.dp(this, 12), p, Ui.dp(this, 12));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
-            if (i % 2 == 0) lp.rightMargin = Ui.dp(this, 5); else lp.leftMargin = Ui.dp(this, 5);
+            lp.leftMargin = lp.rightMargin = Ui.dp(this, 4);
             row.addView(cell, lp);
-            cell.addView(Ui.iconCircle(this, b.earned() ? R.drawable.ic_trophy : R.drawable.ic_lock,
-                    b.earned() ? Ui.GOOD : Ui.SURFACE_VARIANT, b.earned() ? Ui.ON_STATUS : Ui.MUTED, 44));
-            TextView title = Ui.text(cell, b.title, 17, Ui.INK, true);
+            FrameLayout ic = Ui.iconCircle(this, R.drawable.ic_trophy,
+                    b.earned() ? android.graphics.Color.parseColor("#F0B455") : Ui.SURFACE_VARIANT, b.earned() ? Ui.ON_STATUS : Ui.MUTED, 44);
+            ((LinearLayout.LayoutParams) ic.getLayoutParams()).rightMargin = 0;
+            cell.addView(ic);
+            TextView title = Ui.text(cell, b.title, 14, Ui.INK, true);
+            title.setGravity(Gravity.CENTER);
             ((LinearLayout.LayoutParams) title.getLayoutParams()).topMargin = Ui.dp(this, 8);
-            Ui.text(cell, b.description, 14, Ui.MUTED, false);
-            if (b.earned()) Ui.text(cell, "Earned", 14, Ui.GOOD, true);
-            else {
-                xpBar(cell, (double) b.progress / b.target, Ui.PRIMARY, Ui.SURFACE_VARIANT);
-                Ui.text(cell, b.progress + " / " + b.target, 14, Ui.MUTED, false);
-            }
+            TextView sub = Ui.text(cell, b.earned() ? t("Earned") : b.progress + " / " + b.target, 13, b.earned() ? Ui.GOOD : Ui.MUTED, b.earned());
+            sub.setGravity(Gravity.CENTER);
+            cell.setContentDescription(t(b.title) + ". " + t(b.description) + ". " + (b.earned() ? t("Earned") : b.progress + " / " + b.target));
+            cell.setOnClickListener(v -> Toast.makeText(this, t(b.description), Toast.LENGTH_LONG).show());
         }
-        if (row != null && row.getChildCount() == 1) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+        while (row != null && row.getChildCount() < 3) {
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, 1, 1);
+            lp.leftMargin = lp.rightMargin = Ui.dp(this, 4);
+            row.addView(new View(this), lp);
+        }
     }
 
     /** Points earned, a level-up and new badges, shown after "I took it". */
@@ -1181,6 +1405,7 @@ public class MainActivity extends Activity {
         }
         formMed = m;
         formIsNew = existing == null;
+        formMoreKinds = false;
         buildForm(null);
     }
 
@@ -1188,18 +1413,8 @@ public class MainActivity extends Activity {
         Medication m = formMed;
         boolean isNew = formIsNew;
         mode = Mode.MED_FORM;
-        header(isNew ? "Add a medicine" : "Edit medicine", "Photo, name, times and how long to take it");
+        header(isNew ? "Add a medicine" : "Edit medicine", null);
         body.removeAllViews();
-
-        // Photo
-        LinearLayout pc = Ui.card(body, Ui.SURFACE);
-        LinearLayout pr = Ui.row(pc);
-        pr.addView(Ui.drugImage(this, m, 96));
-        LinearLayout pt = Ui.vbox(this);
-        pr.addView(pt, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        Ui.text(pt, "Medicine photo", 18, Ui.INK, true);
-        Ui.text(pt, "Shown on the alarm so the right tablet is easy to recognise.", 15, Ui.MUTED, false);
-        LinearLayout pa = Ui.row(pc);
 
         final EditText[] f = new EditText[8]; // name, dose, instr, times, start, days, stock, perDose
         formCapture = () -> {
@@ -1216,90 +1431,181 @@ public class MainActivity extends Activity {
             Double pv = RegimenParser.parseNumber(f[7].getText().toString());
             if (pv != null && pv > 0) m.unitsPerDose = pv;
         };
-        Ui.button(pa, "Camera", Ui.PRIMARY_CONTAINER, v -> { formCapture.run(); startActivityForResult(PhotoActivity.intent(this), REQ_PHOTO); });
-        Ui.button(pa, "Gallery", Ui.SURFACE_VARIANT, v -> {
-            formCapture.run();
-            startActivityForResult(new Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE), REQ_GALLERY);
-        });
-        if (!m.photo.isEmpty()) Ui.button(pa, "Remove", Ui.SURFACE_VARIANT, v -> { formCapture.run(); m.photo = ""; buildForm(null); });
 
-        // Type of medicine
+        // Photo of the pack: tap to take or pick one.
+        LinearLayout pc = Ui.card(body, Ui.SURFACE);
+        pc.setPadding(Ui.dp(this, 12), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
+        LinearLayout pr = Ui.row(pc);
+        if (m.photo.isEmpty()) {
+            FrameLayout tile = new FrameLayout(this);
+            GradientDrawable g = new GradientDrawable();
+            g.setColor(Ui.PRIMARY_CONTAINER);
+            g.setCornerRadius(Ui.dp(this, 16));
+            g.setStroke(Ui.dp(this, 2), Ui.PRIMARY, Ui.dp(this, 6), Ui.dp(this, 4));
+            tile.setBackground(g);
+            tile.addView(Ui.icon(this, R.drawable.ic_camera, Ui.PRIMARY, 30), new FrameLayout.LayoutParams(Ui.dp(this, 30), Ui.dp(this, 30), Gravity.CENTER));
+            LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(Ui.dp(this, 80), Ui.dp(this, 80));
+            tl.rightMargin = Ui.dp(this, 12);
+            pr.addView(tile, tl);
+        } else pr.addView(Ui.drugImage(this, m, 80));
+        LinearLayout pt = Ui.vbox(this);
+        pr.addView(pt, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        TextView ptitle = Ui.text(pt, "Photo of the pack", 18, Ui.INK, true);
+        ((LinearLayout.LayoutParams) ptitle.getLayoutParams()).topMargin = 0;
+        Ui.text(pt, "Shown when the alarm rings, so you pick the right one", 15, Ui.MUTED, false);
+        pc.setContentDescription(t("Photo of the pack"));
+        pc.setOnClickListener(v -> {
+            formCapture.run();
+            List<String> items = new ArrayList<>();
+            items.add(t("Camera"));
+            items.add(t("Gallery"));
+            if (!m.photo.isEmpty()) items.add(t("Remove"));
+            dialog().setTitle(t("Photo of the pack")).setItems(items.toArray(new String[0]), (dlg, w) -> {
+                if (w == 0) startActivityForResult(PhotoActivity.intent(this), REQ_PHOTO);
+                else if (w == 1) startActivityForResult(new Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE), REQ_GALLERY);
+                else { m.photo = ""; buildForm(null); }
+            }).show();
+        });
+
         DoseForm form = m.doseForm();
         if (!form.observable) m.observed = false;
-        Ui.section(body, "Type of medicine");
-        LinearLayout tc = Ui.card(body, Ui.SURFACE);
-        LinearLayout trow = null;
-        DoseForm[] forms = DoseForm.values();
-        for (int k = 0; k < forms.length; k++) {
-            if (k % 3 == 0) {
-                trow = Ui.row(tc);
-                if (k > 0) ((LinearLayout.LayoutParams) trow.getLayoutParams()).topMargin = Ui.dp(this, 10);
-            }
-            DoseForm fo = forms[k];
-            formTile(trow, fo, fo == form, () -> { formCapture.run(); m.form = fo.code; if (!fo.hasSide()) m.side = ""; buildForm(null); });
+
+        // Name and strength side by side.
+        LinearLayout nr = Ui.row(body);
+        nr.setGravity(Gravity.TOP);
+        LinearLayout n1 = Ui.vbox(this), n2 = Ui.vbox(this);
+        LinearLayout.LayoutParams wide = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, form == DoseForm.SKIN ? 1 : 1.6f);
+        nr.addView(n1, wide);
+        f[0] = Ui.textField(n1, "Name *", "e.g. Metformin", m.name);
+        if (form == DoseForm.SKIN) {
+            f[1] = Ui.textField(body, "Where to apply", "e.g. both hands, the rash on the arm", m.dose);
+        } else {
+            LinearLayout.LayoutParams narrow = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            narrow.leftMargin = Ui.dp(this, 10);
+            nr.addView(n2, narrow);
+            f[1] = Ui.textField(n2, "Strength", doseHint(form), m.dose);
         }
-        while (trow != null && trow.getChildCount() < 3) trow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+
+        // What kind: the three common ones, the rest behind "More".
+        TextView kl = Ui.text(body, "What kind?", 14, Ui.MUTED, true);
+        ((LinearLayout.LayoutParams) kl.getLayoutParams()).topMargin = Ui.dp(this, 16);
+        boolean more = formMoreKinds || !(form == DoseForm.TABLET || form == DoseForm.LIQUID || form == DoseForm.INHALER);
+        DoseForm[] kinds = more ? DoseForm.values() : new DoseForm[]{DoseForm.TABLET, DoseForm.LIQUID, DoseForm.INHALER};
+        LinearLayout krow = null;
+        for (int k = 0; k < kinds.length; k++) {
+            if (k % 3 == 0) {
+                krow = Ui.row(body);
+                ((LinearLayout.LayoutParams) krow.getLayoutParams()).topMargin = Ui.dp(this, 8);
+            }
+            DoseForm fo = kinds[k];
+            kindTile(krow, fo, fo == form, () -> { formCapture.run(); m.form = fo.code; if (!fo.hasSide()) m.side = ""; buildForm(null); });
+        }
+        while (krow != null && krow.getChildCount() < 3) {
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, 1, 1);
+            lp.leftMargin = lp.rightMargin = Ui.dp(this, 4);
+            krow.addView(new View(this), lp);
+        }
+        if (!more) {
+            TextView mk = Ui.text(body, "More: injection, drops, cream", 15, Ui.PRIMARY, true);
+            mk.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 8));
+            mk.setOnClickListener(v -> { formCapture.run(); formMoreKinds = true; buildForm(null); });
+        }
         if (form.hasSide()) {
-            TextView sl = Ui.text(tc, form == DoseForm.EYE ? "Which eye?" : "Which ear?", 14, Ui.MUTED, true);
+            TextView sl = Ui.text(body, form == DoseForm.EYE ? "Which eye?" : "Which ear?", 14, Ui.MUTED, true);
             ((LinearLayout.LayoutParams) sl.getLayoutParams()).topMargin = Ui.dp(this, 14);
-            LinearLayout sides = Ui.row(tc);
+            LinearLayout sides = Ui.row(body);
             String[][] opts = {{"left", "Left"}, {"right", "Right"}, {"both", "Both"}};
             for (String[] o2 : opts)
                 Ui.chip(sides, o2[1], m.side.equals(o2[0]), v -> { formCapture.run(); m.side = o2[0]; buildForm(null); });
         }
 
-        // Details
-        Ui.section(body, "Medicine");
-        LinearLayout c = Ui.card(body, Ui.SURFACE);
-        f[0] = Ui.textField(c, "Medicine name *", "e.g. Metformin", m.name);
-        f[1] = form == DoseForm.SKIN ? Ui.textField(c, "Where to apply", "e.g. both hands, the rash on the arm", m.dose)
-                : Ui.textField(c, "Dose", doseHint(form), m.dose);
-        f[2] = Ui.textField(c, "Instructions", "e.g. after food", m.instructions);
+        f[2] = Ui.textField(body, "Instructions", "e.g. after food", m.instructions);
         if (form.observable) {
-            CheckBox observed = Ui.check(c, "Observed dose: take it in front of the camera", m.observed);
+            CheckBox observed = Ui.check(body, "Observed dose: take it in front of the camera", m.observed);
             observed.setOnCheckedChangeListener((btn, on) -> m.observed = on);
         }
         String advice = DrugInfo.advice(m.name);
-        if (!advice.isEmpty()) foodAdvice(c, advice);
-        Ui.howTo(body, form);
+        if (!advice.isEmpty()) foodAdvice(body, advice);
+        LinearLayout howBox = Ui.vbox(this);
+        body.addView(howBox, Ui.matchWrap(this, 0));
+        Button how = Ui.button(body, "How to use", Ui.SURFACE_VARIANT, null);
+        how.setOnClickListener(v -> {
+            if (howBox.getChildCount() == 0) { Ui.howTo(howBox, form); how.setText(t("Hide instructions")); }
+            else { howBox.removeAllViews(); how.setText(t("How to use")); }
+        });
 
-        Ui.section(body, "How often");
-        LinearLayout o = Ui.card(body, Ui.SURFACE);
-        LinearLayout r1 = Ui.row(o), r2 = Ui.row(o);
-        ((LinearLayout.LayoutParams) r1.getLayoutParams()).topMargin = Ui.dp(this, -6);
-        int i = 0;
-        for (RegimenParser.Frequency p : RegimenParser.PRESETS) {
-            boolean sel = m.everyNDays == p.everyNDays && m.times.equals(p.times);
-            Ui.chip(i++ < 4 ? r1 : r2, p.code, sel, v -> {
+        // When: Morning / Noon / Evening / Night, with the exact times editable underneath.
+        LinearLayout wl = Ui.row(body);
+        ((LinearLayout.LayoutParams) wl.getLayoutParams()).topMargin = Ui.dp(this, 18);
+        Ui.text(wl, "When do you take it?", 14, Ui.MUTED, true);
+        TextView code = new TextView(this);
+        code.setText(m.times.isEmpty() ? t("no reminders") : com.chemrob.medadherence.core.DayPeriod.code(m.times.size(), m.everyNDays)
+                + " · " + t(com.chemrob.medadherence.core.DayPeriod.codeLabel(m.times.size(), m.everyNDays)));
+        code.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        code.setTextColor(Ui.MUTED);
+        code.setTypeface(Ui.regular());
+        wl.addView(code);
+        LinearLayout prow = Ui.row(body);
+        ((LinearLayout.LayoutParams) prow.getLayoutParams()).topMargin = Ui.dp(this, 8);
+        for (com.chemrob.medadherence.core.DayPeriod dp : com.chemrob.medadherence.core.DayPeriod.values()) {
+            String at = null;
+            for (String tm : m.times) if (periodOf(tm) == dp) { at = tm; break; }
+            boolean on = at != null;
+            LinearLayout tile = Ui.vbox(this);
+            tile.setGravity(Gravity.CENTER_HORIZONTAL);
+            tile.setBackground(Ui.rounded(this, on ? Ui.PRIMARY : Ui.SURFACE, 16));
+            tile.setPadding(Ui.dp(this, 2), Ui.dp(this, 12), Ui.dp(this, 2), Ui.dp(this, 12));
+            TextView tn = Ui.text(tile, dp.label, 15, on ? Ui.ON_PRIMARY : Ui.INK, true);
+            tn.setGravity(Gravity.CENTER);
+            tn.setMaxLines(1);
+            ((LinearLayout.LayoutParams) tn.getLayoutParams()).topMargin = 0;
+            TextView tt = Ui.text(tile, "", 13, on ? Ui.ON_PRIMARY : Ui.MUTED, false);
+            tt.setText(on ? at : dp.defaultTime);
+            tt.setGravity(Gravity.CENTER);
+            tile.setContentDescription(t(dp.label) + " " + (on ? at : dp.defaultTime) + (on ? ", " + t("selected") : ""));
+            tile.setOnClickListener(v -> {
                 formCapture.run();
-                m.times = new ArrayList<>(p.times);
-                m.everyNDays = p.everyNDays;
+                List<String> times = new ArrayList<>();
+                boolean had = false;
+                for (String tm : m.times) {
+                    if (periodOf(tm) == dp) had = true;
+                    else times.add(tm);
+                }
+                if (!had) times.add(dp.defaultTime);
+                java.util.Collections.sort(times);
+                m.times = times;
                 buildForm(null);
             });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            lp.leftMargin = lp.rightMargin = Ui.dp(this, 3);
+            prow.addView(tile, lp);
         }
-        f[3] = Ui.textField(o, "Times (24 h, edit freely)", "08:00 20:00", String.join(" ", m.times));
+        f[3] = Ui.textField(body, "Exact times (24 h, edit freely)", "08:00 20:00", String.join(" ", m.times));
         if (form == DoseForm.SKIN)
-            Ui.text(o, "Reminders are optional for skin products: leave the times empty to keep only the instructions.", 14, Ui.MUTED, false);
-        Ui.text(o, m.everyNDays == 1 ? t("Every day") : tf("Every %d days", m.everyNDays), 15, Ui.MUTED, false);
+            Ui.text(body, "Reminders are optional for skin products: leave the times empty to keep only the instructions.", 14, Ui.MUTED, false);
+        CheckBox weekly = Ui.check(body, "Only once a week", m.everyNDays == 7);
+        weekly.setOnCheckedChangeListener((btn, on) -> { formCapture.run(); m.everyNDays = on ? 7 : 1; buildForm(null); });
 
-        Ui.section(body, "How long");
-        LinearLayout hl = Ui.card(body, Ui.SURFACE);
-        f[4] = Ui.textField(hl, "Start date (yyyy-MM-dd)", "yyyy-MM-dd", m.startDate);
-        LinearLayout sr = Ui.row(hl);
-        String today = TimeUtil.date(LocalDate.now()), tomorrow = TimeUtil.date(LocalDate.now().plusDays(1));
-        Ui.chip(sr, "Today", m.startDate.equals(today), v -> { formCapture.run(); m.startDate = today; buildForm(null); });
-        Ui.chip(sr, "Tomorrow", m.startDate.equals(tomorrow), v -> { formCapture.run(); m.startDate = tomorrow; buildForm(null); });
-        f[5] = Ui.field(hl, "Number of days (0 = ongoing)", "7", String.valueOf(m.durationDays), InputType.TYPE_CLASS_NUMBER);
-        LinearLayout dr1 = Ui.row(hl), dr2 = Ui.row(hl);
-        int[] durs = {3, 5, 7, 10, 14, 30, 0};
-        for (int k = 0; k < durs.length; k++) {
-            int dd = durs[k];
-            Ui.chip(k < 4 ? dr1 : dr2, dd == 0 ? t("Ongoing") : tf("%d d", dd), m.durationDays == dd, v -> {
+        // How long.
+        TextView hl = Ui.text(body, "For how long?", 14, Ui.MUTED, true);
+        ((LinearLayout.LayoutParams) hl.getLayoutParams()).topMargin = Ui.dp(this, 18);
+        LinearLayout dr = Ui.row(body);
+        for (int dd : new int[]{5, 7, 30, 0}) {
+            Button chip = Ui.chip(dr, dd == 0 ? t("Ongoing") : tf("%d days", dd), m.durationDays == dd, v -> {
                 formCapture.run();
                 m.durationDays = dd;
                 buildForm(null);
             });
+            if (m.durationDays != dd) { chip.setBackground(Ui.rounded(this, Ui.SURFACE, 14)); chip.setTextColor(Ui.INK); }
         }
+        f[5] = Ui.field(body, "Or the number of days (0 = ongoing)", "7", String.valueOf(m.durationDays), InputType.TYPE_CLASS_NUMBER);
+        TextView sdl = Ui.text(body, "Starts", 14, Ui.MUTED, true);
+        ((LinearLayout.LayoutParams) sdl.getLayoutParams()).topMargin = Ui.dp(this, 14);
+        LinearLayout sr = Ui.row(body);
+        String today = TimeUtil.date(LocalDate.now()), tomorrow = TimeUtil.date(LocalDate.now().plusDays(1));
+        Ui.chip(sr, "Today", m.startDate.equals(today), v -> { formCapture.run(); m.startDate = today; buildForm(null); });
+        Ui.chip(sr, "Tomorrow", m.startDate.equals(tomorrow), v -> { formCapture.run(); m.startDate = tomorrow; buildForm(null); });
+        f[4] = Ui.textField(body, "Start date (yyyy-MM-dd)", "yyyy-MM-dd", m.startDate);
 
         LinearLayout sc = Ui.card(form.countsStock() ? body : new LinearLayout(this), Ui.SURFACE);
         if (form.countsStock()) body.addView(sectionLabel("Stock (optional)"), body.indexOfChild(sc));
@@ -1314,11 +1620,21 @@ public class MainActivity extends Activity {
         f[7] = Ui.field(s2, "Units per dose", "1", num(m.unitsPerDose), dec);
         Ui.text(sc, "The app counts down each dose taken and warns before you run out.", 15, Ui.MUTED, false);
 
+        // Allergy check as the name is typed.
+        TextView allergyBox = Ui.text(body, "", 16, Ui.INK, false);
+        int ap = Ui.dp(this, 14);
+        allergyBox.setPadding(ap, Ui.dp(this, 12), ap, Ui.dp(this, 12));
+        ((LinearLayout.LayoutParams) allergyBox.getLayoutParams()).topMargin = Ui.dp(this, 16);
+        Runnable checkAllergy = () -> showAllergyCheck(allergyBox, f[0].getText().toString().trim());
+        checkAllergy.run();
+        f[0].addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence x, int a1, int a2, int a3) { }
+            @Override public void onTextChanged(CharSequence x, int a1, int a2, int a3) { }
+            @Override public void afterTextChanged(android.text.Editable e) { checkAllergy.run(); }
+        });
+
         if (error != null) Ui.text(body, error, 16, Ui.BAD, true);
-        LinearLayout a = Ui.row(body);
-        ((LinearLayout.LayoutParams) a.getLayoutParams()).topMargin = Ui.dp(this, 12);
-        Ui.button(a, "Cancel", Ui.SURFACE_VARIANT, v -> show(Tab.MEDICINES));
-        Ui.button(a, "Save", Ui.PRIMARY, v -> {
+        Button save = Ui.mainButton(body, "Save medicine", Ui.PRIMARY, v -> {
             formCapture.run();
             String err = null;
             String timesText = f[3].getText().toString().trim();
@@ -1346,6 +1662,9 @@ public class MainActivity extends Activity {
             }
             saveMedication(m);
         });
+        save.getLayoutParams().height += Ui.dp(this, 4);
+        ((LinearLayout.LayoutParams) save.getLayoutParams()).topMargin = Ui.dp(this, 18);
+        Ui.button(body, "Cancel", Ui.SURFACE_VARIANT, v -> { formMoreKinds = false; show(Tab.MEDICINES); });
         if (error != null) scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
         else scroll.scrollTo(0, 0);
     }
@@ -1374,21 +1693,75 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** One tile of the "Type of medicine" picker. */
-    private void formTile(LinearLayout row, DoseForm f, boolean selected, Runnable pick) {
-        LinearLayout tile = Ui.vbox(this);
-        tile.setGravity(Gravity.CENTER_HORIZONTAL);
-        int p = Ui.dp(this, 10);
-        tile.setPadding(p, Ui.dp(this, 14), p, Ui.dp(this, 12));
-        tile.setBackground(Ui.rounded(this, selected ? Ui.PRIMARY : Ui.SURFACE_VARIANT, 18));
-        tile.addView(Ui.icon(this, Ui.formIcon(f), selected ? Ui.ON_PRIMARY : Ui.PRIMARY, 32));
-        TextView l = Ui.text(tile, f.label, 13, selected ? Ui.ON_PRIMARY : Ui.INK, true);
-        l.setGravity(Gravity.CENTER);
+    /** One tile of the "What kind?" picker: icon and a short name. */
+    private void kindTile(LinearLayout row, DoseForm f, boolean selected, Runnable pick) {
+        LinearLayout tile = Ui.hbox(this);
+        tile.setGravity(Gravity.CENTER);
+        int p = Ui.dp(this, 8);
+        tile.setPadding(p, Ui.dp(this, 14), p, Ui.dp(this, 14));
+        tile.setMinimumHeight(Ui.dp(this, 58));
+        tile.setBackground(Ui.rounded(this, selected ? Ui.PRIMARY : Ui.SURFACE, 16));
+        ImageView ic = Ui.icon(this, Ui.formIcon(f), selected ? Ui.ON_PRIMARY : Ui.PRIMARY, 20);
+        ((LinearLayout.LayoutParams) ic.getLayoutParams()).rightMargin = Ui.dp(this, 6);
+        tile.addView(ic);
+        TextView l = new TextView(this);
+        l.setText(t(shortName(f)));
+        l.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        l.setTypeface(Ui.medium(), Typeface.BOLD);
+        l.setTextColor(selected ? Ui.ON_PRIMARY : Ui.INK);
+        l.setMaxLines(2);
+        tile.addView(l);
         tile.setOnClickListener(v -> pick.run());
-        tile.setContentDescription(t(f.label));
+        tile.setContentDescription(t(f.label) + (selected ? ", " + t("selected") : ""));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
         lp.leftMargin = lp.rightMargin = Ui.dp(this, 4);
         row.addView(tile, lp);
+    }
+
+    private static com.chemrob.medadherence.core.DayPeriod periodOf(String hhmm) {
+        try { return com.chemrob.medadherence.core.DayPeriod.of(java.time.LocalTime.parse(hhmm)); }
+        catch (Exception e) { return null; }
+    }
+
+    private static String shortName(DoseForm f) {
+        switch (f) {
+            case LIQUID: return "Syrup";
+            case INHALER: return "Inhaler";
+            case INJECTION: return "Injection";
+            case EYE: return "Eye drops";
+            case EAR: return "Ear drops";
+            case SKIN: return "Cream / oil";
+            default: return "Tablet";
+        }
+    }
+
+    private boolean formMoreKinds;
+
+    /** "Allergy check: no clash..." or the warning, under the medicine form, updated as the name is typed. */
+    private void showAllergyCheck(TextView box, String name) {
+        String allergies = data().profile.allergies.trim();
+        if (name.isEmpty()) { box.setVisibility(View.GONE); return; }
+        box.setVisibility(View.VISIBLE);
+        DrugInfo.AllergyCheck a = DrugInfo.checkAllergy(allergies, name);
+        int bg, fg;
+        String msg;
+        if (allergies.isEmpty()) {
+            bg = Ui.SURFACE_VARIANT; fg = Ui.MUTED;
+            msg = t("no allergies are written in the profile.");
+        } else if (a.level == DrugInfo.Level.NONE) {
+            bg = Ui.GOOD_BG; fg = statusInk(100);
+            msg = tf("no clash found with the allergies in the profile (%s).", allergies);
+        } else {
+            boolean danger = a.level == DrugInfo.Level.DANGER;
+            bg = danger ? Ui.ALERT_BG : Ui.DUE_BG; fg = statusInk(danger ? 0 : 60);
+            msg = tf(a.message, t(a.allergen), a.drug);
+        }
+        String head = t("Allergy check:");
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder(head).append(' ').append(msg);
+        sb.setSpan(new android.text.style.StyleSpan(Typeface.BOLD), 0, head.length(), 0);
+        box.setText(sb);
+        box.setTextColor(fg);
+        box.setBackground(Ui.rounded(this, bg, 16));
     }
 
     /** Food and timing advice, marked as a prompt to check with the pharmacist. */
@@ -1587,72 +1960,83 @@ public class MainActivity extends Activity {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime from = adherenceDays > 0 ? now.toLocalDate().minusDays(adherenceDays - 1).atStartOfDay() : earliestStart();
         AdherenceCalculator.Report r = AdherenceCalculator.compute(d, from, now);
-        header("Adherence", adherenceDays > 0 ? tf("Last %d days", adherenceDays) : t("Since the first dose"));
+        header("Your progress", adherenceDays > 0 ? tf("Last %d days", adherenceDays) : t("Since the first dose"));
 
         LinearLayout periods = Ui.row(body);
         for (int p : new int[]{7, 30, 90, 0}) {
             Ui.chip(periods, p == 0 ? t("All") : tf("%d days", p), adherenceDays == p, v -> { adherenceDays = p; render(); });
         }
 
+        // The headline: one big percentage against the 80 % goal, and the last 14 days as a strip.
         AdherenceStats o = r.overall;
         LinearLayout hero = Ui.card(body, Ui.SURFACE);
         LinearLayout hr = Ui.row(hero);
-        Ui.Ring ring = new Ui.Ring(this);
-        ring.set((float) (o.takingPercent() / 100), String.format(Locale.ROOT, "%.0f%%", o.takingPercent()), "taken", Ui.colorFor(o.takingPercent()));
-        LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(Ui.dp(this, 120), Ui.dp(this, 120));
-        rl.rightMargin = Ui.dp(this, 18);
-        hr.addView(ring, rl);
-        LinearLayout ht = Ui.vbox(this);
-        hr.addView(ht, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        Ui.text(ht, o.category(), 22, Ui.INK, true);
-        Ui.text(ht, tf("%d of %d doses taken", o.taken, o.due), 16, Ui.MUTED, false);
-        Ui.text(ht, tf("%d missed", o.missed) + "  ·  " + tf("%d skipped", o.skipped), 16, Ui.MUTED, false);
-        Ui.text(ht, r.currentStreakDays == 1 ? t("Streak: 1 day") : tf("Streak: %d days", r.currentStreakDays), 16, Ui.PRIMARY, true);
+        TextView pct = Ui.text(hr, "", 64, Ui.colorFor(o.takingPercent()), true);
+        pct.setText(o.due == 0 ? "–" : String.format(Locale.ROOT, "%.0f%%", o.takingPercent()));
+        pct.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        pct.setIncludeFontPadding(false);
+        if (o.due > 0) {
+            double v = o.takingPercent();
+            int bg = v >= 80 ? Ui.GOOD_BG : v >= 50 ? Ui.DUE_BG : Ui.ALERT_BG;
+            TextView cat = Ui.badge(hr, o.category(), Ui.GOOD);
+            cat.setBackground(Ui.rounded(this, bg, 12));
+            cat.setTextColor(statusInk(v));
+            cat.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            ((LinearLayout.LayoutParams) cat.getLayoutParams()).leftMargin = Ui.dp(this, 14);
+        }
+        Ui.text(hero, o.due == 0 ? t("No doses due yet")
+                : tf("You took %d of %d doses. The goal is 80%% or more.", o.taken, o.due), 17, Ui.INK, false);
 
-        LinearLayout bars = Ui.card(body, Ui.SURFACE);
-        Ui.bar(bars, "Doses taken", o.takingPercent(), null);
-        Ui.bar(bars, tf("On time (±%d min)", d.settings.onTimeWindowMinutes), o.timingPercent(), null);
-        Ui.bar(bars, "Days fully covered", o.daysCoveredPercent(), "  (" + o.daysCovered + "/" + o.daysElapsed + ")");
-        if (o.observedDue > 0)
-            Ui.bar(bars, "Observed doses verified", o.verifiedPercent(), "  (" + o.observedVerified + "/" + o.observedDue + ")");
-
-        Ui.section(body, "Last 14 days");
-        LinearLayout hist = Ui.card(body, Ui.SURFACE);
-        LinearLayout strip = Ui.row(hist);
+        LinearLayout strip = Ui.row(hero);
+        ((LinearLayout.LayoutParams) strip.getLayoutParams()).topMargin = Ui.dp(this, 14);
         for (int i = 13; i >= 0; i--) {
             LocalDate day = now.toLocalDate().minusDays(i);
             LocalDateTime end = i == 0 ? now : day.plusDays(1).atStartOfDay().minusNanos(1);
             AdherenceStats ds = AdherenceCalculator.compute(d, day.atStartOfDay(), end).overall;
-            TextView cell = new TextView(this);
-            cell.setText(String.valueOf(day.getDayOfMonth()));
-            cell.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-            cell.setTypeface(Ui.medium());
-            cell.setGravity(Gravity.CENTER);
-            cell.setTextColor(ds.due == 0 ? Ui.MUTED : Ui.ON_STATUS);
-            cell.setBackground(Ui.rounded(this, ds.due == 0 ? Ui.SURFACE_VARIANT : Ui.colorFor(ds.takingPercent()), 8));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 40), 1);
-            lp.leftMargin = lp.rightMargin = Ui.dp(this, 1.5f);
+            View cell = new View(this);
+            GradientDrawable g = new GradientDrawable();
+            g.setCornerRadius(Ui.dp(this, 6));
+            boolean pendingToday = i == 0 && hasPendingToday(d, now);
+            if (pendingToday && ds.due == 0) { g.setColor(Ui.DUE_BG); g.setStroke(Ui.dp(this, 2), Ui.WARN); }
+            else g.setColor(ds.due == 0 ? Ui.SURFACE_VARIANT : Ui.colorFor(ds.takingPercent()));
+            cell.setBackground(g);
+            cell.setContentDescription(day.format(DateTimeFormatter.ofPattern("d MMM", I18n.locale())) + ": "
+                    + (ds.due == 0 ? t("none due") : String.format(Locale.ROOT, "%.0f%%", ds.takingPercent())));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 26), 1);
+            lp.leftMargin = lp.rightMargin = Ui.dp(this, 2);
             strip.addView(cell, lp);
         }
-        Ui.text(hist, "Green: all taken  ·  Amber: some  ·  Red: most missed  ·  Grey: none due", 14, Ui.MUTED, false);
+        LinearLayout legend = Ui.row(hero);
+        ((LinearLayout.LayoutParams) legend.getLayoutParams()).topMargin = Ui.dp(this, 10);
+        legendItem(legend, Ui.GOOD, "All taken");
+        legendItem(legend, Ui.WARN, "Some missed");
+        legendItem(legend, Ui.BAD, "Most missed");
+        Ui.text(hero, r.currentStreakDays == 1 ? t("Streak: 1 day") : tf("Streak: %d days", r.currentStreakDays), 16, Ui.PRIMARY, true);
 
-        if (!r.perMedication.isEmpty()) Ui.section(body, "By medicine");
-        for (int k = 0; k < r.perMedication.size(); k++) {
-            AdherenceStats s = r.perMedication.get(k);
-            Medication m = d.medications.get(k);
+        if (!r.perMedication.isEmpty()) {
+            Ui.section(body, "Each medicine");
             LinearLayout c = Ui.card(body, Ui.SURFACE);
-            LinearLayout top = Ui.row(c);
-            top.addView(Ui.drugImage(this, m, 48));
-            LinearLayout t = Ui.vbox(this);
-            top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-            Ui.text(t, s.label, 18, Ui.INK, true);
-            Ui.text(t, s.category(), 15, Ui.colorFor(s.takingPercent()), true);
-            Ui.bar(c, "Doses taken", s.takingPercent(), "  (" + s.taken + "/" + s.due + ")");
-            Ui.text(c, tf("On time %.0f%%  ·  late %d  ·  missed %d  ·  skipped %d",
-                    s.timingPercent(), s.late, s.missed, s.skipped), 14, Ui.MUTED, false);
+            for (int k = 0; k < r.perMedication.size(); k++) {
+                AdherenceStats s = r.perMedication.get(k);
+                Ui.bar(c, s.label, s.takingPercent(), null);
+                if (k == 0) ((LinearLayout.LayoutParams) c.getChildAt(0).getLayoutParams()).topMargin = 0;
+                Ui.text(c, tf("%d of %d  ·  on time %.0f%%  ·  missed %d  ·  skipped %d",
+                        s.taken, s.due, s.timingPercent(), s.missed, s.skipped), 13, Ui.MUTED, false);
+            }
         }
 
-        badges(Rewards.compute(d, now));
+        Ui.section(body, "Details");
+        LinearLayout bars = Ui.card(body, Ui.SURFACE);
+        Ui.bar(bars, tf("On time (±%d min)", d.settings.onTimeWindowMinutes), o.timingPercent(), null);
+        ((LinearLayout.LayoutParams) bars.getChildAt(0).getLayoutParams()).topMargin = 0;
+        Ui.bar(bars, "Days fully covered", o.daysCoveredPercent(), "  (" + o.daysCovered + "/" + o.daysElapsed + ")");
+        if (o.observedDue > 0)
+            Ui.bar(bars, "Observed doses verified", o.verifiedPercent(), "  (" + o.observedVerified + "/" + o.observedDue + ")");
+        Ui.text(bars, tf("%d missed", o.missed) + "  ·  " + tf("%d skipped", o.skipped), 15, Ui.MUTED, false);
+
+        Rewards.State rs = Rewards.compute(d, now);
+        rewardsCard(d, now);
+        badges(rs);
 
         LinearLayout a = Ui.row(body);
         ((LinearLayout.LayoutParams) a.getLayoutParams()).topMargin = Ui.dp(this, 8);
@@ -1663,6 +2047,33 @@ public class MainActivity extends Activity {
         if (!d.profile.caregiverNumber().isEmpty())
             Ui.button(a2, "Send to caregiver", Ui.SURFACE_VARIANT, v -> sendToCaregiver(
                     Caregiver.dailySummary(d, LocalDate.now(), LocalDateTime.now())));
+    }
+
+    /** Dark text for a status background (green, amber or red), readable on both themes. */
+    private static int statusInk(double percent) {
+        if (Ui.dark) return percent >= 80 ? Ui.GOOD : percent >= 50 ? Ui.WARN : Ui.BAD;
+        return android.graphics.Color.parseColor(percent >= 80 ? "#16784B" : percent >= 50 ? "#7A4B00" : "#A32020");
+    }
+
+    private void legendItem(LinearLayout row, int color, String label) {
+        View sq = new View(this);
+        sq.setBackground(Ui.rounded(this, color, 3));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(this, 12), Ui.dp(this, 12));
+        lp.rightMargin = Ui.dp(this, 6);
+        row.addView(sq, lp);
+        TextView t = new TextView(this);
+        t.setText(t(label));
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        t.setTextColor(Ui.MUTED);
+        t.setTypeface(Ui.regular());
+        LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        tl.rightMargin = Ui.dp(this, 14);
+        row.addView(t, tl);
+    }
+
+    private static boolean hasPendingToday(AppData d, LocalDateTime now) {
+        for (ScheduledDose x : ScheduleEngine.doses(d, now, now.toLocalDate().plusDays(1).atStartOfDay())) return true;
+        return false;
     }
 
     private LocalDateTime earliestStart() {

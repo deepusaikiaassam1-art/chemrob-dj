@@ -6,11 +6,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.graphics.Typeface;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
@@ -78,7 +82,8 @@ public class AlarmActivity extends Activity {
     private void show(Intent intent) {
         key = intent.getStringExtra(AlarmReceiver.EXTRA_KEY);
         if (key == null) { finish(); return; }
-        String title, body, instructions = "", photo = null, courseText = "", advice = "";
+        String title, body, instructions = "", photo = null, advice = "";
+        Course course = null;
         boolean observed = false;
         Medication med = null;
         if (key.startsWith("TEST|")) {
@@ -89,7 +94,7 @@ public class AlarmActivity extends Activity {
             ScheduledDose dose = ScheduleEngine.find(data, key);
             if (dose == null || !ScheduleEngine.isDueNow(data, dose, LocalDateTime.now())) { finish(); return; }
             title = dose.med.name;
-            body = (dose.med.dose.isEmpty() ? "" : dose.med.dose + "  \u00b7  ") + tf("due %s", TimeUtil.clock(dose.time));
+            body = (dose.med.dose.isEmpty() ? "" : dose.med.dose + " \u00b7 ") + tf("due %s", TimeUtil.clock(dose.time));
             instructions = dose.med.instructions;
             if (Inventory.needsRefill(dose.med, LocalDateTime.now()))
                 instructions += (instructions.isEmpty() ? "" : "\n") + tf("Refill soon: %s", Inventory.label(dose.med));
@@ -98,80 +103,105 @@ public class AlarmActivity extends Activity {
             med = dose.med;
             if (med.doseForm().hasSide() && !med.side.isEmpty())
                 body += "  \u00b7  " + t(med.doseForm() == DoseForm.EYE ? "Eye: " + med.side : "Ear: " + med.side);
-            Course c = Course.of(data, med, LocalDateTime.now());
-            if (c != null && !c.finished) courseText = tf("Day %d of %d  ·  %d doses left", c.day, c.days, c.left);
+            course = Course.of(data, med, LocalDateTime.now());
             advice = DrugInfo.advice(med.name);
         }
 
         LinearLayout root = Ui.vbox(this);
-        root.setBackgroundColor(Ui.BG);
-        int p = Ui.dp(this, 22);
-        root.setPadding(p, Ui.dp(this, 36), p, p);
+        root.setBackgroundColor(Ui.SURFACE);
 
-        LinearLayout top = Ui.hbox(this);
-        top.setGravity(Gravity.CENTER);
-        top.addView(Ui.icon(this, R.drawable.ic_alarm, Ui.PRIMARY, 26));
-        TextView clock = Ui.text(top, "  " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")), 30, Ui.INK, true);
-        clock.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(top, Ui.matchWrap(this, 0));
-        center(Ui.text(root, "Time for your medicine", 18, Ui.MUTED, false));
-
-        // Big photo of the drug so the patient takes the right one.
-        android.graphics.Bitmap pic = Ui.loadBitmap(photo, Ui.dp(this, 260));
+        // Top: the pack photo full width (or the form's icon), with "Time for your medicine".
+        FrameLayout top = new FrameLayout(this);
+        top.setBackgroundColor(Ui.PRIMARY_CONTAINER);
+        android.graphics.Bitmap pic = Ui.loadBitmap(photo, Ui.dp(this, 360));
         if (pic != null) {
             ImageView iv = new ImageView(this);
             iv.setImageBitmap(pic);
             iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            iv.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                @Override public void getOutline(View v, android.graphics.Outline o) {
-                    o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), Ui.dp(AlarmActivity.this, 28));
-                }
-            });
-            iv.setClipToOutline(true);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1);
-            lp.topMargin = Ui.dp(this, 18);
-            root.addView(iv, lp);
+            iv.setContentDescription(t("Medicine photo"));
+            top.addView(iv, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         } else {
-            FrameLayoutHolder.addCentered(root, Ui.iconCircle(this, med == null ? R.drawable.ic_pill : Ui.formIcon(med.doseForm()),
-                    Ui.PRIMARY_CONTAINER, Ui.ON_PRIMARY_CONTAINER, 120));
+            ImageView iv = Ui.icon(this, med == null ? R.drawable.ic_pill : Ui.formIcon(med.doseForm()), Ui.PRIMARY, 120);
+            top.addView(iv, new FrameLayout.LayoutParams(Ui.dp(this, 120), Ui.dp(this, 120), Gravity.CENTER));
         }
+        TextView clock = new TextView(this);
+        clock.setText(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+        clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
+        clock.setTypeface(Ui.medium(), Typeface.BOLD);
+        clock.setTextColor(Ui.INK);
+        clock.setBackground(Ui.rounded(this, Ui.SURFACE, 16));
+        clock.setPadding(Ui.dp(this, 14), Ui.dp(this, 6), Ui.dp(this, 14), Ui.dp(this, 6));
+        FrameLayout.LayoutParams cl = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
+        cl.setMargins(0, Ui.dp(this, 36), Ui.dp(this, 20), 0);
+        top.addView(clock, cl);
+        LinearLayout pill = Ui.hbox(this);
+        pill.setBackground(Ui.rounded(this, Ui.PRIMARY, 26));
+        pill.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 20), Ui.dp(this, 12));
+        pill.addView(Ui.icon(this, R.drawable.ic_alarm, Ui.ON_PRIMARY, 24));
+        TextView pl = Ui.text(pill, "Time for your medicine", 18, Ui.ON_PRIMARY, true);
+        pl.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        pl.setPadding(Ui.dp(this, 10), 0, 0, 0);
+        FrameLayout.LayoutParams pll = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.START);
+        pll.setMargins(Ui.dp(this, 20), 0, 0, Ui.dp(this, 16));
+        top.addView(pill, pll);
+        root.addView(top, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, pic != null ? 300 : 240)));
 
-        LinearLayout info = Ui.card(root, Ui.SURFACE);
-        center(Ui.text(info, title, 30, Ui.INK, true));
-        center(Ui.text(info, body, 18, Ui.MUTED, false));
-        if (!instructions.isEmpty()) center(Ui.text(info, instructions, 17, Ui.INK, false));
-        if (!courseText.isEmpty()) center(Ui.text(info, courseText, 16, Ui.PRIMARY, true));
-        if (!advice.isEmpty()) center(Ui.text(info, advice, 15, Ui.WARN, false));
-        if (observed) center(Ui.text(info, "Take this dose in front of the camera.", 16, Ui.WARN, true));
+        // Middle: what to take, and where the course is up to.
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        LinearLayout info = Ui.vbox(this);
+        int p = Ui.dp(this, 24);
+        info.setPadding(p, Ui.dp(this, 18), p, Ui.dp(this, 8));
+        sv.addView(info);
+        root.addView(sv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        TextView name = Ui.text(info, title, 34, Ui.INK, true);
+        ((LinearLayout.LayoutParams) name.getLayoutParams()).topMargin = 0;
+        Ui.text(info, body, 21, Ui.INK, false);
+        if (!instructions.isEmpty()) Ui.text(info, instructions, 18, Ui.MUTED, false);
+        if (course != null && !course.finished && course.total > 0) courseBox(info, course, med);
+        if (!advice.isEmpty()) Ui.text(info, advice, 15, Ui.WARN, false);
+        if (observed) Ui.text(info, "Take this dose in front of the camera.", 16, Ui.WARN, true);
         if (med != null && med.doseForm() != DoseForm.TABLET) {
             final DoseForm form = med.doseForm();
             Ui.button(info, "How to use", Ui.SURFACE_VARIANT, v -> {
-                android.widget.ScrollView sv = new android.widget.ScrollView(this);
+                android.widget.ScrollView hsv = new android.widget.ScrollView(this);
                 LinearLayout box = Ui.vbox(this);
                 int pad = Ui.dp(this, 16);
                 box.setPadding(pad, 0, pad, pad);
-                sv.addView(box);
+                hsv.addView(box);
                 Ui.howTo(box, form);
-                new android.app.AlertDialog.Builder(this).setView(sv).setPositiveButton(t("OK"), null).show();
+                new android.app.AlertDialog.Builder(this).setView(hsv).setPositiveButton(t("OK"), null).show();
             });
         }
 
+        // Bottom: the big "Taken" (press and hold), then Snooze and Skip.
+        LinearLayout actions = Ui.vbox(this);
+        actions.setPadding(Ui.dp(this, 20), 0, Ui.dp(this, 20), Ui.dp(this, 22));
+        root.addView(actions, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         final String k = key;
         if (observed) {
-            Ui.button(root, "Take on camera", Ui.GOOD, v -> {
+            Button cam = Ui.mainButton(actions, "Take on camera", Ui.GOOD, v -> {
                 stopVibration();
                 Notifications.cancel(this, k);
                 startActivity(ObserveActivity.intent(this, k));
                 finish();
-            }).getLayoutParams().height = Ui.dp(this, 72);
+            });
+            cam.getLayoutParams().height = Ui.dp(this, Ui.hasSecond("Take on camera") ? 88 : 76);
+            cam.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
         } else {
-            Ui.button(root, med == null || med.doseForm().observable ? "I took it" : "Done", Ui.GOOD, v -> act(DoseStatus.TAKEN))
-                    .getLayoutParams().height = Ui.dp(this, 72);
+            HoldButton.add(actions, med == null || med.doseForm().observable ? "Taken" : "Done", Ui.GOOD, Ui.ON_STATUS, () -> act(DoseStatus.TAKEN));
         }
-        LinearLayout row = Ui.row(root);
-        Ui.button(row, "Snooze", Ui.WARN, v -> act(DoseStatus.SNOOZED));
+        LinearLayout row = Ui.row(actions);
+        ((LinearLayout.LayoutParams) row.getLayoutParams()).topMargin = Ui.dp(this, 2);
+        int snooze = Store.get(this).settings.snoozeMinutes;
+        Button sn = Ui.button(row, "", Ui.SURFACE_VARIANT, v -> act(DoseStatus.SNOOZED));
+        sn.setText(Ui.twoLine(tf("Snooze %d min", snooze), "Later", 0.78f));
+        Button skip = Ui.mainButton(row, "Skip", Ui.SURFACE_VARIANT, null);
+        if (Ui.hasSecond("Later") || Ui.hasSecond("Skip")) {
+            sn.getLayoutParams().height = Ui.dp(this, 68);
+            skip.getLayoutParams().height = Ui.dp(this, 68);
+        }
         final boolean antimicrobial = med != null && DrugInfo.isAntimicrobial(med.name);
-        Ui.button(row, "Skip", Ui.SURFACE_VARIANT, v -> {
+        skip.setOnClickListener(v -> {
             if (!antimicrobial) { act(DoseStatus.SKIPPED); return; }
             new android.app.AlertDialog.Builder(this)
                     .setTitle(t("Finish the full course"))
@@ -185,18 +215,34 @@ public class AlarmActivity extends Activity {
         startVibration();
     }
 
-    /** Adds a view centred horizontally with some space above and below. */
-    private static final class FrameLayoutHolder {
-        static void addCentered(LinearLayout parent, View v) {
-            LinearLayout wrap = Ui.hbox(parent.getContext());
-            wrap.setGravity(Gravity.CENTER);
-            wrap.addView(v);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1);
-            parent.addView(wrap, lp);
+    /** "Day 3 of 5 · 9 doses left" with one bar per day of the course. */
+    private void courseBox(LinearLayout parent, Course c, Medication med) {
+        LinearLayout box = Ui.vbox(this);
+        box.setBackground(Ui.rounded(this, Ui.PRIMARY_CONTAINER, 16));
+        int p = Ui.dp(this, 14);
+        box.setPadding(p, Ui.dp(this, 12), p, Ui.dp(this, 12));
+        parent.addView(box, Ui.matchWrap(this, 16));
+        LinearLayout head = Ui.row(box);
+        TextView day = Ui.text(head, tf("Day %d of %d", c.day, c.days), 17, Ui.ON_PRIMARY_CONTAINER, true);
+        ((LinearLayout.LayoutParams) day.getLayoutParams()).topMargin = 0;
+        TextView left = Ui.text(head, c.left == 1 ? t("1 dose left") : tf("%d doses left", c.left), 17, Ui.ON_PRIMARY_CONTAINER, true);
+        left.setGravity(Gravity.END);
+        ((LinearLayout.LayoutParams) left.getLayoutParams()).topMargin = 0;
+        if (c.days <= 31) {
+            LinearLayout bars = Ui.row(box);
+            ((LinearLayout.LayoutParams) bars.getLayoutParams()).topMargin = Ui.dp(this, 10);
+            for (int i = 0; i < c.days; i++) {
+                View seg = new View(this);
+                seg.setBackground(Ui.rounded(this, i < c.day ? Ui.PRIMARY : Ui.SURFACE, 4));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 8), 1);
+                lp.leftMargin = lp.rightMargin = Ui.dp(this, c.days > 14 ? 1 : 3);
+                bars.addView(seg, lp);
+            }
         }
+        if (med != null && DrugInfo.isAntimicrobial(med.name))
+            Ui.text(box, "Finish the whole course, even if you feel better.", 15, Ui.ON_PRIMARY_CONTAINER, false);
     }
 
-    private static void center(TextView t) { t.setGravity(Gravity.CENTER); }
 
     private void act(DoseStatus status) {
         stopVibration();

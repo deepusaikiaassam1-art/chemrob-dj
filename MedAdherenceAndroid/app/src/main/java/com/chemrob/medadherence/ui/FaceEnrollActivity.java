@@ -7,9 +7,12 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
@@ -24,6 +27,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.chemrob.medadherence.R;
 import com.chemrob.medadherence.core.FaceMatch;
 import com.chemrob.medadherence.core.FaceSignature;
 import com.chemrob.medadherence.core.FrameObs;
@@ -101,35 +105,61 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK);
-        SurfaceView surface = new SurfaceView(this);
-        root.addView(surface, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        Ui.fonts(this);
+        LinearLayout root = Ui.vbox(this);
+        root.setBackgroundColor(Ui.BG);
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        int p = Ui.dp(this, 22);
+        root.setPadding(p, Ui.dp(this, 36), p, Ui.dp(this, 24));
+        TextView kicker = Ui.text(root, "Your profile · face scan", 15, Ui.PRIMARY, true);
+        kicker.setText(kicker.getText().toString().toUpperCase(com.chemrob.medadherence.core.I18n.locale()));
+        kicker.setLetterSpacing(0.06f);
+        Ui.text(root, "So the app knows it's you at camera doses", 15, Ui.MUTED, false);
 
-        LinearLayout top = Ui.vbox(this);
-        top.setBackgroundColor(Color.argb(170, 0, 0, 0));
-        int p = Ui.dp(this, 20);
-        top.setPadding(p, Ui.dp(this, 40), p, p);
-        Ui.text(top, "Face scan", 26, Color.WHITE, true);
-        Ui.text(top, "Like a phone's face unlock: the app learns your face from a few angles, so it can "
-                + "recognise you during observed doses. It stays on this phone.", 15, Color.parseColor("#D0D3FF"), false);
+        // The camera inside an oval, like a face-unlock screen.
+        FrameLayout frame = new FrameLayout(this);
+        SurfaceView surface = new SurfaceView(this);
+        frame.addView(surface, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        frame.addView(new OvalMask(this), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        LinearLayout.LayoutParams fl = new LinearLayout.LayoutParams(Ui.dp(this, 250), Ui.dp(this, 312));
+        fl.topMargin = Ui.dp(this, 18);
+        root.addView(frame, fl);
+
         dots = new LinearLayout(this);
-        dots.setPadding(0, Ui.dp(this, 12), 0, Ui.dp(this, 4));
+        dots.setGravity(Gravity.CENTER);
         for (int i = 0; i < Stage.values().length; i++) {
             View d = new View(this);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 6), 1);
-            lp.setMargins(0, 0, Ui.dp(this, 6), 0);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 8));
+            lp.leftMargin = lp.rightMargin = Ui.dp(this, 4);
             dots.addView(d, lp);
         }
-        top.addView(dots);
-        progress = Ui.text(top, "", 14, Color.WHITE, false);
-        hint = Ui.text(top, "Starting camera...", 22, Color.WHITE, true);
-        root.addView(top, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP));
-
-        LinearLayout bottom = Ui.vbox(this);
-        bottom.setPadding(p, p, p, Ui.dp(this, 36));
-        Ui.button(bottom, "Cancel", Ui.SURFACE_VARIANT, v -> { setResult(RESULT_CANCELED); finish(); });
-        root.addView(bottom, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+        LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        dl.topMargin = Ui.dp(this, 20);
+        root.addView(dots, dl);
+        progress = Ui.text(root, "", 14, Ui.MUTED, false);
+        progress.setGravity(Gravity.CENTER);
+        hint = Ui.text(root, "Starting camera...", 27, Ui.INK, true);
+        hint.setGravity(Gravity.CENTER);
+        ((LinearLayout.LayoutParams) hint.getLayoutParams()).topMargin = Ui.dp(this, 6);
+        if (Voice.enabled(this)) {
+            LinearLayout chip = Ui.hbox(this);
+            chip.setBackground(Ui.rounded(this, Ui.PRIMARY_CONTAINER, 18));
+            chip.setPadding(Ui.dp(this, 12), Ui.dp(this, 7), Ui.dp(this, 14), Ui.dp(this, 7));
+            chip.addView(Ui.icon(this, R.drawable.ic_volume, Ui.ON_PRIMARY_CONTAINER, 18));
+            TextView ct = Ui.text(chip, "Speaking this out loud", 15, Ui.ON_PRIMARY_CONTAINER, true);
+            ct.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            ct.setPadding(Ui.dp(this, 8), 0, 0, 0);
+            LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            cl.topMargin = Ui.dp(this, 12);
+            root.addView(chip, cl);
+        }
+        root.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1));
+        TextView note = Ui.text(root, "Only one face should be in view. Your photo and face scan stay on this phone.", 16, Ui.MUTED, false);
+        note.setBackground(Ui.rounded(this, Ui.SURFACE, 18));
+        note.setPadding(Ui.dp(this, 16), Ui.dp(this, 14), Ui.dp(this, 16), Ui.dp(this, 14));
+        LinearLayout actions = Ui.row(root);
+        Ui.button(actions, "Cancel", Ui.SURFACE_VARIANT, v -> { setResult(RESULT_CANCELED); finish(); });
+        Ui.button(actions, "Start again", Ui.SURFACE_VARIANT, v -> { if (camera != null && !done) restart(null); });
         setContentView(root);
 
         vision = new Vision(false);
@@ -208,7 +238,7 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
         hint.setText(t(s.prompt));
         progress.setText(tf("Step %d of %d", stage + 1, Stage.values().length));
         for (int i = 0; i < dots.getChildCount(); i++)
-            dots.getChildAt(i).setBackground(Ui.rounded(this, i < stage ? Ui.GOOD : i == stage ? Color.WHITE : Color.argb(90, 255, 255, 255), 3));
+            dots.getChildAt(i).setBackground(Ui.rounded(this, i < stage ? Ui.GOOD : i == stage ? Ui.PRIMARY : Ui.LINE, 4));
         if (interrupt) Voice.say(this, s.prompt);
         else Voice.then(this, s.prompt);
     }
@@ -276,6 +306,32 @@ public class FaceEnrollActivity extends Activity implements SurfaceHolder.Callba
     }
 
     private Object[] lastFace; // frame and face box for the profile photo
+
+    /** Covers the camera outside an oval in the page colour and draws the oval's outline. */
+    private static final class OvalMask extends View {
+        private final Paint cover = new Paint(Paint.ANTI_ALIAS_FLAG), line = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path path = new Path();
+        private final android.graphics.RectF oval = new android.graphics.RectF();
+
+        OvalMask(Context c) {
+            super(c);
+            cover.setColor(Ui.BG);
+            line.setStyle(Paint.Style.STROKE);
+            line.setStrokeWidth(Ui.dp(c, 6));
+            line.setColor(Ui.PRIMARY);
+        }
+
+        @Override protected void onDraw(Canvas cv) {
+            float inset = line.getStrokeWidth() / 2;
+            oval.set(inset, inset, getWidth() - inset, getHeight() - inset);
+            path.reset();
+            path.setFillType(Path.FillType.EVEN_ODD);
+            path.addRect(0, 0, getWidth(), getHeight(), Path.Direction.CW);
+            path.addOval(oval, Path.Direction.CW);
+            cv.drawPath(path, cover);
+            cv.drawOval(oval, line);
+        }
+    }
 
     /** Records one face fingerprint for this stage (spaced out, so each view differs a little). */
     private void capture(byte[] frame, Face face, Stage s) {

@@ -10,6 +10,8 @@ public final class Settings {
     public String theme = "system";        // "system", "light" or "dark"
     public boolean voiceGuidance = true;   // speak instructions once a dose is accepted
     public String language = "system";     // "system", "en", "hi", "bn" or "as"
+    public String secondLanguage = "";     // shown under the main buttons ("" = none)
+    public boolean languageChosen;         // the welcome screen has been answered
     public boolean caregiverMissedAlerts = true;  // offer to tell the caregiver when a dose is missed
     public boolean caregiverDailySummary;         // evening summary to send to the caregiver
     public int summaryHour = 21;

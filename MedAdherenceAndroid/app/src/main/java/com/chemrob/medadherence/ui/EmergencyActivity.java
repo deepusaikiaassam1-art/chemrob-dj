@@ -46,6 +46,7 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
     private static final long VOICE_DELAY_MS = 9000;   // give the call time to be answered
     private static final int VOICE_REPEATS = 4;
 
+    private static final int RED = Color.parseColor("#D0342F");
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView big, status;
     private int left = Emergency.COUNTDOWN_SECONDS;
@@ -76,21 +77,50 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
 
         root = Ui.vbox(this);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setBackgroundColor(Color.parseColor("#B3261E"));
+        root.setBackgroundColor(RED);
         int p = Ui.dp(this, 24);
-        root.setPadding(p, Ui.dp(this, 56), p, p);
-        TextView title = Ui.text(root, "Emergency", 34, Color.WHITE, true);
+        root.setPadding(p, Ui.dp(this, 48), p, p);
+        TextView title = Ui.text(root, "Emergency", 18, Color.WHITE, true);
+        title.setText(title.getText().toString().toUpperCase(com.chemrob.medadherence.core.I18n.locale()));
+        title.setLetterSpacing(0.12f);
         title.setGravity(Gravity.CENTER);
         String number = Emergency.number(profile);
         String who = profile.emergencyName.trim().isEmpty() ? (number == null ? "" : number) : profile.emergencyName.trim();
-        status = Ui.text(root, number == null ? t("No emergency contact is set.") : tf("Calling %s in", who), 20, Color.WHITE, false);
+        status = Ui.text(root, number == null ? t("No emergency contact is set.") : tf("Calling %s in", who), 30, Color.WHITE, true);
         status.setGravity(Gravity.CENTER);
-        big = Ui.text(root, "", 120, Color.WHITE, true);
+
+        // The countdown inside a ring.
+        android.widget.FrameLayout ring = new android.widget.FrameLayout(this);
+        android.graphics.drawable.GradientDrawable rg = new android.graphics.drawable.GradientDrawable();
+        rg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        rg.setStroke(Ui.dp(this, 10), Color.argb(90, 255, 255, 255));
+        ring.setBackground(rg);
+        big = new TextView(this);
+        big.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 110);
+        big.setTextColor(Color.WHITE);
+        big.setTypeface(Ui.medium(), Typeface.BOLD);
         big.setGravity(Gravity.CENTER);
-        big.setTypeface(Typeface.create(Ui.medium(), Typeface.BOLD));
+        big.setIncludeFontPadding(false);
+        ring.addView(big, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(Ui.dp(this, 220), Ui.dp(this, 220));
+        rl.topMargin = Ui.dp(this, 28);
+        root.addView(ring, rl);
+        if (number != null) {
+            TextView who2 = Ui.text(root, "", 18, Color.WHITE, false);
+            who2.setText(tf("%s · %s. The speaker will play a message asking for help.", who, number));
+            who2.setGravity(Gravity.CENTER);
+            ((LinearLayout.LayoutParams) who2.getLayoutParams()).topMargin = Ui.dp(this, 24);
+        }
         root.addView(new android.view.View(this), new LinearLayout.LayoutParams(1, 0, 1));
-        cancelButton = Ui.button(root, "Cancel", Color.WHITE, v -> cancel());
-        cancelButton.setTextColor(Color.parseColor("#B3261E"));
+        cancelButton = Ui.mainButton(root, "Cancel", Color.WHITE, v -> cancel());
+        cancelButton.setTextColor(RED);
+        cancelButton.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 26);
+        cancelButton.setBackground(Ui.rounded(this, Color.WHITE, 22));
+        cancelButton.getLayoutParams().height = Ui.dp(this, Ui.hasSecond("Cancel") ? 92 : 80);
+        if (number != null) {
+            TextView after = Ui.text(root, "After the call, a message with your location opens for you to send.", 15, Color.WHITE, false);
+            after.setGravity(Gravity.CENTER);
+        }
         setContentView(root);
 
         if (number == null) {
@@ -136,6 +166,7 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
     private void send() {
         sent = true;
         String number = Emergency.number(profile);
+        big.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 60);
         big.setText("SOS");
         Location loc = lastLocation();
         smsText = Emergency.smsText(profile, loc == null ? null : loc.getLatitude(), loc == null ? null : loc.getLongitude());
@@ -164,12 +195,12 @@ public class EmergencyActivity extends Activity implements TextToSpeech.OnInitLi
 
     private void showAfterButtons(String number) {
         cancelButton.setVisibility(android.view.View.GONE);
-        Ui.button(root, "Send location by SMS", Color.WHITE, v -> openSms()).setTextColor(Color.parseColor("#B3261E"));
+        Ui.button(root, "Send location by SMS", Color.WHITE, v -> openSms()).setTextColor(RED);
         Ui.button(root, "Call again", Color.WHITE, v -> {
             Intent call = new Intent(checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
                     ? Intent.ACTION_CALL : Intent.ACTION_DIAL, Uri.parse("tel:" + number));
             try { startActivity(call); } catch (Exception ignored) { }
-        }).setTextColor(Color.parseColor("#B3261E"));
+        }).setTextColor(RED);
         Ui.button(root, "Close", Color.parseColor("#8C1D18"), v -> finish());
     }
 

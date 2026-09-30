@@ -42,6 +42,8 @@ public final class Lang {
     /** Applies the language chosen in settings ("system" = the phone's language, if supported). */
     public static void apply(Context c, AppData d) {
         String code = I18n.resolve(d.settings.language, Locale.getDefault().getLanguage());
+        String second = d.settings.secondLanguage == null ? "" : d.settings.secondLanguage;
+        if (!second.equals(I18n.secondLang())) I18n.setSecond(second, second.isEmpty() ? null : table(c, second));
         if (code.equals(I18n.lang()) && (code.equals("en") || cache.containsKey(code))) return;
         I18n.set(code, table(c, code));
         Voice.languageChanged();

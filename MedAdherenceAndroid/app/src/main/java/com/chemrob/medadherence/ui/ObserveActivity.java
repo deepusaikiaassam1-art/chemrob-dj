@@ -20,15 +20,21 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.chemrob.medadherence.R;
 import com.chemrob.medadherence.Store;
 import com.chemrob.medadherence.alarm.AlarmReceiver;
 import com.chemrob.medadherence.alarm.AlarmScheduler;
@@ -40,6 +46,7 @@ import com.chemrob.medadherence.core.DoseStatus;
 import com.chemrob.medadherence.core.FaceMatch;
 import com.chemrob.medadherence.core.FaceSignature;
 import com.chemrob.medadherence.core.FrameObs;
+import com.chemrob.medadherence.core.I18n;
 import com.chemrob.medadherence.core.IntakeRules;
 import com.chemrob.medadherence.core.Medication;
 import com.chemrob.medadherence.core.ScheduleEngine;
@@ -86,7 +93,11 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
     private int cameraOrientation;
     private int previewW, previewH;
     private SurfaceHolder holder;
-    private TextView instruction, status, counter;
+    private TextView instruction, status, counter, secondsLeft, youChip;
+    private View stepBar;
+    private LinearLayout checklist;
+    private static final String[] STEP_NAMES = {"Look and turn", "Show the medicine", "Medicine to mouth", "Drink water", "Open mouth wide"};
+    private static final int DARK = Color.parseColor("#111320");
 
     // step state
     private int step = -1;
@@ -131,26 +142,86 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         if (Store.get(this).profile.hasFaceRecognition()) recognizer = FaceRecognizer.get(this);
         vision = new Vision(true);
 
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK);
+        Ui.fonts(this);
+        LinearLayout root = Ui.vbox(this);
+        root.setBackgroundColor(DARK);
+
+        // Camera with a face guide, and the medicine's name above it.
+        FrameLayout cam = new FrameLayout(this);
         SurfaceView surface = new SurfaceView(this);
-        root.addView(surface, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        cam.addView(surface, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        View oval = new View(this);
+        GradientDrawable og = new GradientDrawable();
+        og.setShape(GradientDrawable.OVAL);
+        og.setStroke(Ui.dp(this, 4), Color.argb(140, 255, 255, 255), Ui.dp(this, 8), Ui.dp(this, 6));
+        oval.setBackground(og);
+        cam.addView(oval, new FrameLayout.LayoutParams(Ui.dp(this, 230), Ui.dp(this, 280), Gravity.CENTER));
+        youChip = new TextView(this);
+        youChip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        youChip.setTypeface(Ui.medium(), Typeface.BOLD);
+        youChip.setTextColor(DARK);
+        youChip.setBackground(Ui.rounded(this, Color.parseColor("#4CD08E"), 18));
+        youChip.setPadding(Ui.dp(this, 14), Ui.dp(this, 7), Ui.dp(this, 14), Ui.dp(this, 7));
+        youChip.setVisibility(View.GONE);
+        FrameLayout.LayoutParams yl = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        yl.bottomMargin = Ui.dp(this, 16);
+        cam.addView(youChip, yl);
 
-        LinearLayout top = Ui.vbox(this);
-        top.setBackgroundColor(Color.argb(170, 0, 0, 0));
-        int p = Ui.dp(this, 20);
-        top.setPadding(p, Ui.dp(this, 36), p, p);
-        Ui.text(top, tf("Observed dose: %s", (med.name + " " + med.dose).trim()), 15, Color.parseColor("#D0D3FF"), true);
-        counter = Ui.text(top, "", 14, Color.WHITE, false);
-        instruction = Ui.text(top, "Starting camera...", 24, Color.WHITE, true);
-        status = Ui.text(top, "", 14, Color.WHITE, false);
-        root.addView(top, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP));
+        LinearLayout bar = Ui.hbox(this);
+        bar.setBackgroundColor(Color.argb(150, 17, 19, 32));
+        bar.setPadding(Ui.dp(this, 16), Ui.dp(this, 32), Ui.dp(this, 16), Ui.dp(this, 12));
+        TextView close = new TextView(this);
+        close.setBackground(Ui.rounded(this, Color.argb(36, 255, 255, 255), 24));
+        close.setCompoundDrawablesRelativeWithIntrinsicBounds(tinted(R.drawable.ic_close, Color.WHITE), null, null, null);
+        close.setPadding(Ui.dp(this, 12), 0, 0, 0);
+        close.setContentDescription(t("Cancel"));
+        close.setOnClickListener(v -> cancel());
+        LinearLayout.LayoutParams xl = new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 48));
+        xl.rightMargin = Ui.dp(this, 12);
+        bar.addView(close, xl);
+        LinearLayout names = Ui.vbox(this);
+        bar.addView(names, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        TextView mn = Ui.text(names, "", 18, Color.WHITE, true);
+        mn.setText((med.name + " " + med.dose).trim());
+        ((LinearLayout.LayoutParams) mn.getLayoutParams()).topMargin = 0;
+        TextView note = Ui.text(names, "Camera dose · nothing is uploaded", 14, Color.parseColor("#A3A7BD"), false);
+        ((LinearLayout.LayoutParams) note.getLayoutParams()).topMargin = 0;
+        cam.addView(bar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP));
+        root.addView(cam, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        LinearLayout bottom = Ui.vbox(this);
-        bottom.setPadding(p, p, p, Ui.dp(this, 32));
-        Ui.button(bottom, "Cancel", Ui.BAD, v -> cancel());
-        root.addView(bottom, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+        // The sheet: which step, what to do, and the five steps ticked off one by one.
+        LinearLayout sheet = Ui.vbox(this);
+        GradientDrawable sg = new GradientDrawable();
+        sg.setColor(Color.WHITE);
+        float r = Ui.dp(this, 30);
+        sg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
+        sheet.setBackground(sg);
+        sheet.setPadding(Ui.dp(this, 22), Ui.dp(this, 20), Ui.dp(this, 22), Ui.dp(this, 24));
+        LinearLayout head = Ui.hbox(this);
+        sheet.addView(head);
+        counter = Ui.text(head, "", 15, Ui.PRIMARY_LIGHT, true);
+        counter.setLetterSpacing(0.06f);
+        ((LinearLayout.LayoutParams) counter.getLayoutParams()).topMargin = 0;
+        secondsLeft = Ui.text(head, "", 15, Ui.MUTED_LIGHT, false);
+        secondsLeft.setGravity(Gravity.END);
+        ((LinearLayout.LayoutParams) secondsLeft.getLayoutParams()).topMargin = 0;
+        instruction = Ui.text(sheet, "Starting camera...", 26, Ui.INK_LIGHT, true);
+        ((LinearLayout.LayoutParams) instruction.getLayoutParams()).topMargin = Ui.dp(this, 10);
+        FrameLayout track = new FrameLayout(this);
+        track.setBackground(Ui.rounded(this, Color.parseColor("#ECEEF8"), 5));
+        stepBar = new View(this);
+        stepBar.setBackground(Ui.rounded(this, Ui.PRIMARY_LIGHT, 5));
+        track.addView(stepBar, new FrameLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT));
+        LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 10));
+        tl.topMargin = Ui.dp(this, 14);
+        sheet.addView(track, tl);
+        checklist = Ui.vbox(this);
+        sheet.addView(checklist, Ui.matchWrap(this, 10));
+        status = Ui.text(sheet, "", 14, Ui.MUTED_LIGHT, false);
+        Ui.text(sheet, "Blink once at any point. If a step can't be checked, the pharmacist looks at the photos.", 14, Ui.MUTED_LIGHT, false);
+        root.addView(sheet, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         setContentView(root);
+        drawChecklist();
 
         holder = surface.getHolder();
         holder.addCallback(this);
@@ -227,8 +298,9 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
     private void nextStep() {
         step++;
         if (step >= STEPS.length) { complete(); return; }
-        counter.setText(tf("Step %d of %d", step + 1, STEPS.length));
+        counter.setText(tf("Step %d of %d", step + 1, STEPS.length).toUpperCase(I18n.locale()));
         instruction.setText(t(STEPS[step].instruction));
+        drawChecklist();
         if (step == 0) {
             Voice.say(this, "Let's take your %s together. Follow my instructions.", med.name);
             Voice.then(this, STEPS[0].instruction);
@@ -265,6 +337,15 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
             Voice.say(this, "I still need to see: %s.", Voice.list(r.missing));
         }
         status.setText(sb.toString());
+        long left = Math.max(0, (STEP_MAX_MS - elapsed + 999) / 1000);
+        secondsLeft.setText(r.passed ? t("Confirmed") : left == 1 ? t("1 second left") : tf("%d seconds left", left));
+        View track = (View) stepBar.getParent();
+        double done = (step + Math.min(1.0, (double) elapsed / STEP_MAX_MS)) / STEPS.length;
+        stepBar.getLayoutParams().width = (int) (track.getWidth() * done);
+        stepBar.requestLayout();
+        boolean you = recognizer != null && !Double.isNaN(lastSim) && FaceMatch.isMatch(lastSim);
+        youChip.setVisibility(you ? View.VISIBLE : View.GONE);
+        if (you) youChip.setText(tf("This is %s", Store.get(this).profile.firstName()));
 
         if ((r.passed && elapsed >= STEP_MIN_MS) || elapsed >= STEP_MAX_MS) { endStep(r); return; }
         handler.postDelayed(this::tick, 250);
@@ -304,6 +385,7 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         if (finished) return;
         if (r.passed) Voice.say(this, "Good.");
         results.add(r);
+        passed.add(r.passed);
         String file = saveSnapshot(step + 1);
         if (file != null) evidence.add(file);
         nextStep();
@@ -346,7 +428,12 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         }
         Store.save(this);
         AlarmScheduler.onRecorded(this, key);
-        counter.setText(tf("%d/%d steps confirmed", v.stepsPassed, v.stepsTotal));
+        counter.setText(tf("%d/%d steps confirmed", v.stepsPassed, v.stepsTotal).toUpperCase(I18n.locale()));
+        secondsLeft.setText("");
+        youChip.setVisibility(View.GONE);
+        stepBar.getLayoutParams().width = ((View) stepBar.getParent()).getWidth();
+        stepBar.requestLayout();
+        drawChecklist();
         String done = v.verification == com.chemrob.medadherence.core.Verification.AUTO_VERIFIED
                 ? "Dose verified. Well done!" : "Dose recorded. Your pharmacist will review the photos.";
         instruction.setText(t(done));
@@ -367,6 +454,54 @@ public class ObserveActivity extends Activity implements SurfaceHolder.Callback,
         if (dose != null && ScheduleEngine.isDueNow(data, dose, LocalDateTime.now()))
             AlarmReceiver.record(this, key, DoseStatus.SNOOZED);
         finish();
+    }
+
+    private final List<Boolean> passed = new ArrayList<>();
+
+    /** The five steps: ticked (green) when confirmed, the current one filled in, the rest waiting. */
+    private void drawChecklist() {
+        if (checklist == null) return;
+        checklist.removeAllViews();
+        for (int i = 0; i < STEP_NAMES.length; i++) {
+            boolean done = i < step || finished, current = i == step && !finished;
+            boolean ok = i < passed.size() && passed.get(i);
+            LinearLayout row = Ui.hbox(this);
+            row.setPadding(0, Ui.dp(this, 3), 0, Ui.dp(this, 3));
+            FrameLayout dot = new FrameLayout(this);
+            GradientDrawable g = new GradientDrawable();
+            g.setShape(GradientDrawable.OVAL);
+            int ink;
+            if (done) { g.setColor(ok ? Ui.GOOD_LIGHT : Color.parseColor("#C77C00")); ink = Color.WHITE; }
+            else if (current) { g.setColor(Ui.PRIMARY_LIGHT); ink = Color.WHITE; }
+            else { g.setColor(Color.WHITE); g.setStroke(Ui.dp(this, 2), Color.parseColor("#DCDEEA")); ink = Ui.MUTED_LIGHT; }
+            dot.setBackground(g);
+            if (done && ok) {
+                ImageView iv = new ImageView(this);
+                iv.setImageDrawable(tinted(R.drawable.ic_check, ink));
+                dot.addView(iv, new FrameLayout.LayoutParams(Ui.dp(this, 18), Ui.dp(this, 18), Gravity.CENTER));
+            } else {
+                TextView n = new TextView(this);
+                n.setText(done ? "!" : String.valueOf(i + 1));
+                n.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+                n.setTypeface(Ui.medium(), Typeface.BOLD);
+                n.setTextColor(ink);
+                n.setGravity(Gravity.CENTER);
+                dot.addView(n, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            }
+            LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(Ui.dp(this, 30), Ui.dp(this, 30));
+            dl.rightMargin = Ui.dp(this, 12);
+            row.addView(dot, dl);
+            TextView label = Ui.text(row, STEP_NAMES[i], 17, done ? (ok ? Ui.GOOD_LIGHT : Ui.MUTED_LIGHT) : current ? Ui.INK_LIGHT : Ui.MUTED_LIGHT, current);
+            ((LinearLayout.LayoutParams) label.getLayoutParams()).topMargin = 0;
+            checklist.addView(row);
+        }
+    }
+
+    private android.graphics.drawable.Drawable tinted(int res, int color) {
+        android.graphics.drawable.Drawable d = getDrawable(res).mutate();
+        d.setTint(color);
+        d.setBounds(0, 0, Ui.dp(this, 24), Ui.dp(this, 24));
+        return d;
     }
 
     @Override

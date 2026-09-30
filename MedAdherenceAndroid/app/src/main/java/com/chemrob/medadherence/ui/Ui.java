@@ -48,6 +48,8 @@ public final class Ui {
     // Palette (set by apply()).
     public static int BG, SURFACE, SURFACE_VARIANT, PRIMARY, ON_PRIMARY, PRIMARY_CONTAINER, ON_PRIMARY_CONTAINER;
     public static int INK, MUTED, LINE, GOOD, WARN, BAD, ON_STATUS, DUE_BG, ALERT_BG, GOOD_BG;
+    /** Light-theme colours for surfaces that stay white in both themes (the camera sheet). */
+    public static final int PRIMARY_LIGHT = 0xFF4F46E5, INK_LIGHT = 0xFF1A1C29, MUTED_LIGHT = 0xFF5E6275, GOOD_LIGHT = 0xFF1E9E63;
     /** Kept for older call sites: ACCENT is the primary colour, MUTED buttons render as tonal. */
     public static int ACCENT;
 
@@ -60,7 +62,29 @@ public final class Ui {
                 == Configuration.UI_MODE_NIGHT_YES;
         setPalette("dark".equals(pref) || (!"light".equals(pref) && systemDark));
         a.setTheme(dark ? R.style.AppTheme_Dark : R.style.AppTheme_Light);
+        fonts(a);
     }
+
+    private static Typeface regularTf, boldTf;
+
+    /**
+     * Loads Atkinson Hyperlegible, a typeface made for readers with low vision (clear 1/l/I, 0/O).
+     * Screens that do not use the app theme call this themselves. Indian scripts fall back to the
+     * phone's own Noto fonts.
+     */
+    public static void fonts(Context c) {
+        if (regularTf != null) return;
+        try {
+            Typeface family = c.getResources().getFont(R.font.atkinson);
+            regularTf = Typeface.create(family, Typeface.NORMAL);
+            boldTf = Typeface.create(family, Typeface.BOLD);
+        } catch (Exception e) {
+            regularTf = Typeface.DEFAULT;
+            boldTf = Typeface.create("sans-serif-medium", Typeface.BOLD);
+        }
+    }
+
+    public static Typeface regular() { return regularTf != null ? regularTf : Typeface.DEFAULT; }
 
     static void setPalette(boolean isDark) {
         dark = isDark;
@@ -98,7 +122,61 @@ public final class Ui {
         return new RippleDrawable(ColorStateList.valueOf(ripple), rounded(c, color, radiusDp), null);
     }
 
-    public static Typeface medium() { return Typeface.create("sans-serif-medium", Typeface.NORMAL); }
+    public static Typeface medium() { return boldTf != null ? boldTf : Typeface.create("sans-serif-medium", Typeface.NORMAL); }
+
+    /**
+     * A label with the second language underneath ("I took it" / "মই খালোঁ"), for the main buttons.
+     * Just the label when no second language is set.
+     */
+    public static CharSequence twoLine(String english, float secondScale) {
+        String main = I18n.t(english), second = I18n.t2(english);
+        if (second == null || second.equals(main)) return main;
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder(main).append('\n');
+        int start = sb.length();
+        sb.append(second);
+        sb.setSpan(new android.text.style.RelativeSizeSpan(secondScale), start, sb.length(), 0);
+        sb.setSpan(new FontSpan(regular()), start, sb.length(), 0);
+        return sb;
+    }
+
+    /** A text already in the main language, with the second-language version of another label under it. */
+    public static CharSequence twoLine(String mainText, String secondKey, float secondScale) {
+        String second = I18n.t2(secondKey);
+        if (second == null || second.equals(mainText)) return mainText;
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder(mainText).append('\n');
+        int start = sb.length();
+        sb.append(second);
+        sb.setSpan(new android.text.style.RelativeSizeSpan(secondScale), start, sb.length(), 0);
+        sb.setSpan(new FontSpan(regular()), start, sb.length(), 0);
+        return sb;
+    }
+
+    public static boolean hasSecond(String english) {
+        String second = I18n.t2(english);
+        return second != null && !second.equals(I18n.t(english));
+    }
+
+    /** Draws a span in a given typeface (TypefaceSpan(Typeface) needs Android 9). */
+    static final class FontSpan extends android.text.style.MetricAffectingSpan {
+        private final Typeface tf;
+        FontSpan(Typeface tf) { this.tf = tf; }
+        @Override public void updateDrawState(android.text.TextPaint p) { p.setTypeface(tf); p.setFakeBoldText(false); }
+        @Override public void updateMeasureState(android.text.TextPaint p) { p.setTypeface(tf); p.setFakeBoldText(false); }
+    }
+
+    /**
+     * A main action: a big button with the second language underneath. Taller than an ordinary
+     * button so both lines stay large.
+     */
+    public static Button mainButton(ViewGroup parent, String label, int color, View.OnClickListener l) {
+        Button b = button(parent, label, color, l);
+        b.setText(twoLine(label, 0.72f));
+        if (hasSecond(label)) {
+            b.getLayoutParams().height += dp(parent.getContext(), 18);
+            b.setLineSpacing(0, 1.0f);
+        }
+        return b;
+    }
 
     public static LinearLayout.LayoutParams matchWrap(Context c, int topMarginDp) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -142,7 +220,7 @@ public final class Ui {
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(color);
         t.setLineSpacing(0, 1.12f);
-        if (bold) t.setTypeface(medium(), Typeface.BOLD);
+        t.setTypeface(bold ? medium() : regular(), bold ? Typeface.BOLD : Typeface.NORMAL);
         if (isRow(parent)) parent.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         else parent.addView(t, matchWrap(c, 4));
         return t;
@@ -214,8 +292,15 @@ public final class Ui {
         e.setInputType(inputType);
         e.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         e.setTextColor(INK);
+        e.setTypeface(regular());
         e.setHintTextColor(MUTED);
-        e.setBackground(rounded(c, SURFACE_VARIANT, 14));
+        // The field being typed in turns white with a coloured outline, so it is easy to see.
+        android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
+        GradientDrawable focused = rounded(c, SURFACE, 14);
+        focused.setStroke(dp(c, 2), PRIMARY);
+        bg.addState(new int[]{android.R.attr.state_focused}, focused);
+        bg.addState(new int[]{}, rounded(c, SURFACE_VARIANT, 14));
+        e.setBackground(bg);
         int p = dp(c, 14);
         e.setPadding(p, p, p, p);
         parent.addView(e, matchWrap(c, 6));
@@ -230,6 +315,7 @@ public final class Ui {
         CheckBox cb = new CheckBox(parent.getContext());
         cb.setText(I18n.t(label));
         cb.setTextColor(INK);
+        cb.setTypeface(regular());
         cb.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
         cb.setButtonTintList(ColorStateList.valueOf(PRIMARY));
         cb.setChecked(value);
