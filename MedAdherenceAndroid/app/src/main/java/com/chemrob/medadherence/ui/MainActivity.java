@@ -43,6 +43,10 @@ import com.chemrob.medadherence.alarm.Notifications;
 import com.chemrob.medadherence.core.AdherenceCalculator;
 import com.chemrob.medadherence.core.Backup;
 import com.chemrob.medadherence.core.Caregiver;
+import com.chemrob.medadherence.core.Course;
+import com.chemrob.medadherence.core.DoseForm;
+import com.chemrob.medadherence.core.DrugInfo;
+import com.chemrob.medadherence.core.SideEffect;
 import com.chemrob.medadherence.core.I18n;
 import com.chemrob.medadherence.core.JsonCodec;
 import com.chemrob.medadherence.core.AdherenceStats;
@@ -381,6 +385,7 @@ public class MainActivity extends Activity {
         EditText cond = Ui.textField(h, "Conditions", "e.g. Type 2 diabetes, high blood pressure", p.conditions);
         EditText allergy = Ui.textField(h, "Allergies", "e.g. Penicillin (leave empty if none)", p.allergies);
         EditText doctor = Ui.textField(h, "Doctor or pharmacy", "e.g. Dr Sharma, City Pharmacy", p.doctor);
+        EditText pharmacist = Ui.field(h, "Pharmacist's phone (one-tap call)", "e.g. +91 98765 00000", p.pharmacistPhone, InputType.TYPE_CLASS_PHONE);
 
         Ui.section(body, "Emergency contact");
         LinearLayout e = Ui.card(body, Ui.SURFACE);
@@ -403,6 +408,7 @@ public class MainActivity extends Activity {
             p.conditions = cond.getText().toString().trim();
             p.allergies = allergy.getText().toString().trim();
             p.doctor = doctor.getText().toString().trim();
+            p.pharmacistPhone = pharmacist.getText().toString().trim();
             p.emergencyName = eName.getText().toString().trim();
             p.emergencyPhone = ePhone.getText().toString().trim();
             p.caregiverName = cName.getText().toString().trim();
@@ -418,6 +424,7 @@ public class MainActivity extends Activity {
             p.conditions = cond.getText().toString().trim();
             p.allergies = allergy.getText().toString().trim();
             p.doctor = doctor.getText().toString().trim();
+            p.pharmacistPhone = pharmacist.getText().toString().trim();
             p.emergencyName = eName.getText().toString().trim();
             p.emergencyPhone = ePhone.getText().toString().trim();
             p.caregiverName = cName.getText().toString().trim();
@@ -589,6 +596,8 @@ public class MainActivity extends Activity {
             Ui.text(c, tf("%s. Contact your pharmacy so you don't run out.", Inventory.label(m)), 16, Ui.INK, false);
             Ui.button(c, "I have refilled it", Ui.PRIMARY, v -> askRefill(m));
         }
+        for (Medication m : d.medications) if (Course.needsLeftoverCheck(d, m, now)) leftoverCard(m);
+        checkInCard(d, now);
 
         List<ScheduledDose> doses = ScheduleEngine.doses(d, now.toLocalDate().atStartOfDay(), now.toLocalDate().plusDays(1).atStartOfDay());
         todaySignature = signature(now);
@@ -605,6 +614,7 @@ public class MainActivity extends Activity {
         if (visit != null && visit.time().isBefore(now.plusDays(14))) visitCard(body, visit, now, false);
 
         rewardsCard(d, now);
+        quickHelp(d, now);
 
         // Progress ring.
         int taken = 0, settled = 0;
@@ -647,17 +657,19 @@ public class MainActivity extends Activity {
         label.setLetterSpacing(0.06f);
         LinearLayout r = Ui.row(c);
         ((LinearLayout.LayoutParams) r.getLayoutParams()).topMargin = Ui.dp(this, 10);
-        r.addView(Ui.drugImage(this, dose.med.photo, 88));
+        r.addView(Ui.drugImage(this, dose.med, 88));
         LinearLayout t = Ui.vbox(this);
         r.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         Ui.text(t, dose.med.name, 26, fg, true);
-        if (!dose.med.dose.isEmpty()) Ui.text(t, dose.med.dose, 18, fg, false);
+        if (!dose.med.dose.isEmpty()) Ui.text(t, dose.med.dose + sideLabel(dose.med), 18, fg, false);
         if (!dose.med.instructions.isEmpty()) Ui.text(t, dose.med.instructions, 16, fg, false);
+        courseLine(t, dose.med, now, fg);
         if (!due) return;
         String key = dose.key();
+        if (now.isAfter(dose.time.plusMinutes(data().settings.onTimeWindowMinutes))) missedAdvice(c, dose, now);
         Button main = dose.med.observed
                 ? Ui.button(c, "Take on camera", Ui.GOOD, v -> startActivity(ObserveActivity.intent(this, key)))
-                : Ui.button(c, "I took it", Ui.GOOD, v -> recordAction(key, DoseStatus.TAKEN));
+                : Ui.button(c, takeLabel(dose.med), Ui.GOOD, v -> recordAction(key, DoseStatus.TAKEN));
         main.getLayoutParams().height = Ui.dp(this, 68);
         main.setTextSize(TypedValue.COMPLEX_UNIT_SP, 21);
         LinearLayout a = Ui.row(c);
@@ -684,7 +696,7 @@ public class MainActivity extends Activity {
         LinearLayout card = Ui.card(body, Ui.SURFACE);
         ((LinearLayout.LayoutParams) card.getLayoutParams()).topMargin = Ui.dp(this, 10);
         LinearLayout top = Ui.row(card);
-        top.addView(Ui.drugImage(this, dose.med.photo, 56));
+        top.addView(Ui.drugImage(this, dose.med, 56));
         LinearLayout t = Ui.vbox(this);
         top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         TextView time = Ui.text(t, TimeUtil.clock(dose.time), 15, Ui.PRIMARY, true);
@@ -715,12 +727,17 @@ public class MainActivity extends Activity {
 
         boolean canAct = (status == DoseStatus.PENDING || status == DoseStatus.SNOOZED)
                 && !now.isBefore(dose.time.minusMinutes(EARLY_WINDOW_MIN));
-        boolean catchUp = status == DoseStatus.MISSED;
+        boolean catchUp = status == DoseStatus.MISSED && dose.time.toLocalDate().equals(now.toLocalDate());
+        if (catchUp && Course.missedAdvice(dose.time, Course.nextDose(dose.med, dose.time), now) == Course.Missed.SKIP) {
+            missedAdvice(card, dose, now);
+            return;
+        }
+        if (catchUp) missedAdvice(card, dose, now);
         if (!canAct && !catchUp) return;
         LinearLayout actions = Ui.row(card);
         String key = dose.key();
         if (dose.med.observed) Ui.button(actions, "Take on camera", Ui.GOOD, v -> startActivity(ObserveActivity.intent(this, key)));
-        else Ui.button(actions, catchUp ? "Taken late" : "Take", Ui.GOOD, v -> recordAction(key, DoseStatus.TAKEN));
+        else Ui.button(actions, catchUp ? "Taken late" : dose.med.doseForm().observable ? "Take" : "Done", Ui.GOOD, v -> recordAction(key, DoseStatus.TAKEN));
         Ui.button(actions, "Skip", Ui.SURFACE_VARIANT, v -> recordAction(key, DoseStatus.SKIPPED));
     }
 
@@ -735,6 +752,21 @@ public class MainActivity extends Activity {
     }
 
     private void recordAction(String key, DoseStatus status) {
+        ScheduledDose sd = ScheduleEngine.find(data(), key);
+        if (status == DoseStatus.SKIPPED && sd != null && DrugInfo.isAntimicrobial(sd.med.name)) {
+            new AlertDialog.Builder(this)
+                    .setTitle(t("Finish the full course"))
+                    .setMessage(t("Skipping antibiotic doses can let the infection come back and helps germs become resistant. Take it unless your doctor told you to stop."))
+                    .setPositiveButton(t("I took it"), (dlg, w) -> doRecord(key, DoseStatus.TAKEN))
+                    .setNeutralButton(t("Skip anyway"), (dlg, w) -> doRecord(key, DoseStatus.SKIPPED))
+                    .setNegativeButton(t("Cancel"), null)
+                    .show();
+            return;
+        }
+        doRecord(key, status);
+    }
+
+    private void doRecord(String key, DoseStatus status) {
         Rewards.State before = status == DoseStatus.TAKEN ? Rewards.compute(data(), LocalDateTime.now()) : null;
         if (status == DoseStatus.TAKEN) {
             ScheduledDose d = ScheduleEngine.find(data(), key);
@@ -743,6 +775,190 @@ public class MainActivity extends Activity {
         AlarmReceiver.record(this, key, status);
         render();
         if (before != null) celebrate(before, Rewards.compute(data(), LocalDateTime.now()));
+    }
+
+    // ================================================================== Care helpers
+
+    private static String takeLabel(Medication m) {
+        return m.doseForm().observable ? "I took it" : "Done";
+    }
+
+    private static String sideLabel(Medication m) {
+        if (!m.doseForm().hasSide() || m.side.isEmpty()) return "";
+        String which = m.side.equals("left") ? "left" : m.side.equals("right") ? "right" : "both";
+        return "  ·  " + t(m.doseForm() == DoseForm.EYE ? "Eye: " + which : "Ear: " + which);
+    }
+
+    /** "Day 3 of 5 · 9 doses left" for fixed-length courses. */
+    private void courseLine(LinearLayout parent, Medication m, LocalDateTime now, int color) {
+        Course c = Course.of(data(), m, now);
+        if (c == null || c.total == 0) return;
+        String text = c.finished ? tf("Course finished: %d of %d doses taken", c.taken, c.total)
+                : tf("Day %d of %d  ·  %d doses left", c.day, c.days, c.left);
+        Ui.text(parent, text, 15, color, true);
+        if (!c.finished && DrugInfo.isAntimicrobial(m.name))
+            Ui.text(parent, "Finish the whole course, even when you feel better.", 14, color, false);
+    }
+
+    /** What to do about a late or missed dose: take it now, or skip it and wait for the next. */
+    private void missedAdvice(LinearLayout parent, ScheduledDose dose, LocalDateTime now) {
+        LocalDateTime next = Course.nextDose(dose.med, dose.time);
+        boolean skip = Course.missedAdvice(dose.time, next, now) == Course.Missed.SKIP;
+        LinearLayout box = Ui.vbox(this);
+        box.setBackground(Ui.rounded(this, skip ? Ui.ALERT_BG : Ui.DUE_BG, 14));
+        int p = Ui.dp(this, 12);
+        box.setPadding(p, p, p, p);
+        parent.addView(box, Ui.matchWrap(this, 10));
+        Ui.text(box, skip ? "Skip this dose" : "Late: take it now", 15, skip ? Ui.BAD : Ui.WARN, true);
+        Ui.text(box, skip && next != null
+                ? tf("It is nearly time for the next dose. Take the next one at %s. Never take two doses at once.", TimeUtil.clock(next))
+                : t("Take it as soon as you remember, then carry on at the usual times. Never take two doses at once."), 15, Ui.INK, false);
+        Ui.text(box, "Some medicines have their own rules: ask your pharmacist if unsure.", 12, Ui.MUTED, false);
+    }
+
+    /** Three big tiles for getting help: call the pharmacist, report a side effect, SOS. */
+    private void quickHelp(AppData d, LocalDateTime now) {
+        LinearLayout row = Ui.row(body);
+        ((LinearLayout.LayoutParams) row.getLayoutParams()).topMargin = Ui.dp(this, 14);
+        helpTile(row, R.drawable.ic_phone, "Call pharmacist", Ui.PRIMARY_CONTAINER, Ui.ON_PRIMARY_CONTAINER, this::callPharmacist);
+        helpTile(row, R.drawable.ic_person, "Side effect", Ui.DUE_BG, Ui.WARN, () -> reportSideEffect(d, now));
+        helpTile(row, R.drawable.ic_alarm, "SOS", Ui.BAD, Ui.ON_STATUS, this::startSos);
+    }
+
+    private void helpTile(LinearLayout row, int icon, String label, int bg, int fg, Runnable action) {
+        LinearLayout tile = Ui.vbox(this);
+        tile.setGravity(Gravity.CENTER_HORIZONTAL);
+        int p = Ui.dp(this, 10);
+        tile.setPadding(p, Ui.dp(this, 16), p, Ui.dp(this, 14));
+        tile.setBackground(Ui.rounded(this, bg, 20));
+        tile.addView(Ui.icon(this, icon, fg, 30));
+        TextView l = Ui.text(tile, label, 14, fg, true);
+        l.setGravity(Gravity.CENTER);
+        tile.setOnClickListener(v -> action.run());
+        tile.setContentDescription(t(label));
+        tile.setMinimumHeight(Ui.dp(this, 88));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+        lp.leftMargin = lp.rightMargin = Ui.dp(this, 5);
+        row.addView(tile, lp);
+    }
+
+    /** At the end of a course: how much is left over, and what to do with it. */
+    private void leftoverCard(Medication m) {
+        LinearLayout c = Ui.card(body, Ui.PRIMARY_CONTAINER);
+        Ui.text(c, tf("%s: course finished", m.name), 19, Ui.ON_PRIMARY_CONTAINER, true);
+        Ui.text(c, tf("How much is left over (%s)?", m.doseForm().unit.isEmpty() ? t("units") : t(m.doseForm().unit)), 16, Ui.ON_PRIMARY_CONTAINER, false);
+        EditText left = new EditText(this);
+        left.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        left.setHint("0");
+        left.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        left.setBackground(Ui.rounded(this, Ui.SURFACE, 14));
+        int p = Ui.dp(this, 12);
+        left.setPadding(p, p, p, p);
+        c.addView(left, Ui.matchWrap(this, 8));
+        LinearLayout a = Ui.row(c);
+        Ui.button(a, "None left", Ui.SURFACE, v -> saveLeftover(m, 0));
+        Ui.button(a, "Save", Ui.PRIMARY, v -> {
+            Double n = RegimenParser.parseNumber(left.getText().toString());
+            if (n == null || n < 0) { toast("Enter a number, or tap None left."); return; }
+            saveLeftover(m, n);
+        });
+    }
+
+    private void saveLeftover(Medication m, double n) {
+        m.leftover = n;
+        saveAndSync();
+        render();
+        if (n > 0)
+            new AlertDialog.Builder(this)
+                    .setTitle(t("Leftover medicine"))
+                    .setMessage(t(DrugInfo.isAntimicrobial(m.name)
+                            ? "Please return the leftover antibiotic to your pharmacy. Do not keep it for later or give it to anyone: using leftovers without a doctor helps germs become resistant."
+                            : "Please return leftover medicine to your pharmacy. Do not keep it for later or give it to anyone."))
+                    .setPositiveButton(t("OK"), null).show();
+        else toast("Well done for finishing the course!");
+    }
+
+    /** Daily "How do you feel?" while medicines are being taken. */
+    private void checkInCard(AppData d, LocalDateTime now) {
+        String today = TimeUtil.date(now.toLocalDate());
+        if (today.equals(d.settings.lastCheckIn)) return;
+        if (ScheduleEngine.doses(d, now.toLocalDate().minusDays(1).atStartOfDay(), now.toLocalDate().plusDays(1).atStartOfDay()).isEmpty()) return;
+        LinearLayout c = Ui.card(body, Ui.SURFACE);
+        Ui.text(c, "How do you feel today?", 19, Ui.INK, true);
+        Ui.text(c, "Tell us about any side effect of your medicines.", 15, Ui.MUTED, false);
+        LinearLayout a = Ui.row(c);
+        Ui.button(a, "I feel fine", Ui.GOOD, v -> {
+            d.settings.lastCheckIn = today;
+            Store.save(this);
+            toast("Glad to hear it!");
+            render();
+        });
+        Ui.button(a, "Side effect", Ui.WARN, v -> reportSideEffect(d, now));
+    }
+
+    private void reportSideEffect(AppData d, LocalDateTime now) {
+        SideEffect.Symptom[] all = SideEffect.Symptom.values();
+        String[] labels = new String[all.length];
+        for (int i = 0; i < all.length; i++) labels[i] = t(all[i].label);
+        boolean[] picked = new boolean[all.length];
+        new AlertDialog.Builder(this)
+                .setTitle(t("What have you noticed?"))
+                .setMultiChoiceItems(labels, picked, (dlg, i, on) -> picked[i] = on)
+                .setNegativeButton(t("Cancel"), null)
+                .setPositiveButton(t("Report"), (dlg, w) -> {
+                    List<String> meds = new ArrayList<>();
+                    for (ScheduledDose x : ScheduleEngine.doses(d, now.toLocalDate().minusDays(1).atStartOfDay(), now.plusNanos(1)))
+                        if (!meds.contains(x.med.name)) meds.add(x.med.name);
+                    boolean serious = false, any = false;
+                    for (int i = 0; i < all.length; i++) {
+                        if (!picked[i]) continue;
+                        SideEffect e = new SideEffect();
+                        e.at = TimeUtil.minute(now);
+                        e.symptom = all[i];
+                        e.medicines = String.join(", ", meds);
+                        d.sideEffects.add(e);
+                        serious |= all[i].serious;
+                        any = true;
+                    }
+                    if (!any) return;
+                    d.settings.lastCheckIn = TimeUtil.date(now.toLocalDate());
+                    Store.save(this);
+                    render();
+                    if (serious)
+                        new AlertDialog.Builder(this)
+                                .setTitle(t("This could be serious"))
+                                .setMessage(t("Get help now: call your pharmacist or doctor, or press SOS for emergency help. Do not take the next dose until you have spoken to them."))
+                                .setPositiveButton(t("Call pharmacist"), (d2, w2) -> callPharmacist())
+                                .setNeutralButton(t("SOS"), (d2, w2) -> startSos())
+                                .setNegativeButton(t("Close"), null).show();
+                    else
+                        new AlertDialog.Builder(this)
+                                .setTitle(t("Noted"))
+                                .setMessage(t("It is saved in your report for the pharmacist. Would you like to call your pharmacist now?"))
+                                .setPositiveButton(t("Call pharmacist"), (d2, w2) -> callPharmacist())
+                                .setNegativeButton(t("Not now"), null).show();
+                })
+                .show();
+    }
+
+    /** Rings the pharmacist straight away (or opens the dialler if calling is not allowed). */
+    private void callPharmacist() {
+        String number = data().profile.pharmacistPhone.trim();
+        if (number.isEmpty()) {
+            dialog().setTitle(t("Add your pharmacist's number"))
+                    .setMessage(t("Add the pharmacy's phone number in your profile so you can call with one tap."))
+                    .setNegativeButton(t("Not now"), null)
+                    .setPositiveButton(t("Open profile"), (dlg, w) -> showProfileForm(false)).show();
+            return;
+        }
+        Uri tel = Uri.parse("tel:" + Caregiver.dialable(number));
+        boolean canCall = checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED;
+        try {
+            startActivity(new Intent(canCall ? Intent.ACTION_CALL : Intent.ACTION_DIAL, tel));
+        } catch (Exception e) {
+            open(new Intent(Intent.ACTION_DIAL, tel));
+        }
+        if (!canCall) requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, REQ_SOS);
     }
 
     // ================================================================== Rewards (the game layer)
@@ -780,6 +996,15 @@ public class MainActivity extends Activity {
                 14, Ui.ON_PRIMARY, false);
         Rewards.Badge next = s.nextBadge();
         if (next != null) Ui.text(c, tf("Next badge: %s (%d/%d)", t(next.title), next.progress, next.target), 15, Ui.ON_PRIMARY, true);
+        LinearLayout ch = Ui.vbox(this);
+        ch.setBackground(Ui.rounded(this, translucent(Ui.ON_PRIMARY, 30), 14));
+        int cp = Ui.dp(this, 12);
+        ch.setPadding(cp, Ui.dp(this, 10), cp, Ui.dp(this, 10));
+        c.addView(ch, Ui.matchWrap(this, 12));
+        Ui.text(ch, tf("Weekly challenge: every dose on time this week (+%d points)", Rewards.WEEK_BONUS), 14, Ui.ON_PRIMARY, true);
+        Ui.text(ch, s.weekSettled == 0 ? t("Starts with your next dose.")
+                : s.weekOnTrack() ? tf("On track: %d of %d on time so far", s.weekOnTime, s.weekSettled)
+                : t("Missed this week. A new challenge starts on Monday."), 14, Ui.ON_PRIMARY, false);
     }
 
     private static int translucent(int color, int alpha) {
@@ -881,11 +1106,11 @@ public class MainActivity extends Activity {
         for (Medication m : d.medications) {
             LinearLayout card = Ui.card(body, Ui.SURFACE);
             LinearLayout top = Ui.row(card);
-            top.addView(Ui.drugImage(this, m.photo, 72));
+            top.addView(Ui.drugImage(this, m, 72));
             LinearLayout t = Ui.vbox(this);
             top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
             Ui.text(t, m.name, 20, Ui.INK, true);
-            if (!m.dose.isEmpty()) Ui.text(t, m.dose, 16, Ui.MUTED, false);
+            Ui.text(t, t(m.doseForm().label) + (m.dose.isEmpty() ? "" : "  ·  " + m.dose) + sideLabel(m), 15, Ui.MUTED, false);
             LinearLayout badges = Ui.row(t);
             ((LinearLayout.LayoutParams) badges.getLayoutParams()).topMargin = Ui.dp(this, 6);
             badges.setGravity(Gravity.START);
@@ -897,10 +1122,22 @@ public class MainActivity extends Activity {
             String course = m.durationDays > 0
                     ? tf("%d days", m.durationDays) + "  ·  " + tf("%s to %s", m.startDate, TimeUtil.date(m.end()))
                     : tf("Ongoing since %s", m.startDate);
-            Ui.text(card, m.timesLabel() + "  ·  " + (m.everyNDays == 1 ? t("daily") : m.everyNDays == 7 ? t("weekly")
+            if (m.times.isEmpty()) Ui.text(card, "No reminders: use as directed", 16, Ui.INK, false);
+            else Ui.text(card, m.timesLabel() + "  ·  " + (m.everyNDays == 1 ? t("daily") : m.everyNDays == 7 ? t("weekly")
                     : tf("every %d days", m.everyNDays)), 16, Ui.INK, false);
             Ui.text(card, course, 15, Ui.MUTED, false);
+            courseLine(card, m, now, Ui.PRIMARY);
             if (!m.instructions.isEmpty()) Ui.text(card, m.instructions, 15, Ui.MUTED, false);
+            if (m.leftover > 0) Ui.text(card, tf("%s left over at the end of the course", num(m.leftover)), 15, Ui.WARN, true);
+            String adv = DrugInfo.advice(m.name);
+            if (!adv.isEmpty()) foodAdvice(card, adv);
+            LinearLayout howBox = Ui.vbox(this);
+            card.addView(howBox, Ui.matchWrap(this, 0));
+            Button how = Ui.button(card, "How to use", Ui.SURFACE_VARIANT, null);
+            how.setOnClickListener(v -> {
+                if (howBox.getChildCount() == 0) { Ui.howTo(howBox, m.doseForm()); how.setText(t("Hide instructions")); }
+                else { howBox.removeAllViews(); how.setText(t("How to use")); }
+            });
             if (m.tracksStock()) {
                 boolean low = Inventory.needsRefill(m, now);
                 Ui.text(card, tf(low ? "Refill soon: %s" : "Stock: %s", Inventory.label(m)), 15, low ? Ui.BAD : Ui.MUTED, low);
@@ -957,7 +1194,7 @@ public class MainActivity extends Activity {
         // Photo
         LinearLayout pc = Ui.card(body, Ui.SURFACE);
         LinearLayout pr = Ui.row(pc);
-        pr.addView(Ui.drugImage(this, m.photo, 96));
+        pr.addView(Ui.drugImage(this, m, 96));
         LinearLayout pt = Ui.vbox(this);
         pr.addView(pt, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         Ui.text(pt, "Medicine photo", 18, Ui.INK, true);
@@ -986,14 +1223,45 @@ public class MainActivity extends Activity {
         });
         if (!m.photo.isEmpty()) Ui.button(pa, "Remove", Ui.SURFACE_VARIANT, v -> { formCapture.run(); m.photo = ""; buildForm(null); });
 
+        // Type of medicine
+        DoseForm form = m.doseForm();
+        if (!form.observable) m.observed = false;
+        Ui.section(body, "Type of medicine");
+        LinearLayout tc = Ui.card(body, Ui.SURFACE);
+        LinearLayout trow = null;
+        DoseForm[] forms = DoseForm.values();
+        for (int k = 0; k < forms.length; k++) {
+            if (k % 3 == 0) {
+                trow = Ui.row(tc);
+                if (k > 0) ((LinearLayout.LayoutParams) trow.getLayoutParams()).topMargin = Ui.dp(this, 10);
+            }
+            DoseForm fo = forms[k];
+            formTile(trow, fo, fo == form, () -> { formCapture.run(); m.form = fo.code; if (!fo.hasSide()) m.side = ""; buildForm(null); });
+        }
+        while (trow != null && trow.getChildCount() < 3) trow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+        if (form.hasSide()) {
+            TextView sl = Ui.text(tc, form == DoseForm.EYE ? "Which eye?" : "Which ear?", 14, Ui.MUTED, true);
+            ((LinearLayout.LayoutParams) sl.getLayoutParams()).topMargin = Ui.dp(this, 14);
+            LinearLayout sides = Ui.row(tc);
+            String[][] opts = {{"left", "Left"}, {"right", "Right"}, {"both", "Both"}};
+            for (String[] o2 : opts)
+                Ui.chip(sides, o2[1], m.side.equals(o2[0]), v -> { formCapture.run(); m.side = o2[0]; buildForm(null); });
+        }
+
         // Details
         Ui.section(body, "Medicine");
         LinearLayout c = Ui.card(body, Ui.SURFACE);
         f[0] = Ui.textField(c, "Medicine name *", "e.g. Metformin", m.name);
-        f[1] = Ui.textField(c, "Dose", "e.g. 500 mg, 1 tablet", m.dose);
+        f[1] = form == DoseForm.SKIN ? Ui.textField(c, "Where to apply", "e.g. both hands, the rash on the arm", m.dose)
+                : Ui.textField(c, "Dose", doseHint(form), m.dose);
         f[2] = Ui.textField(c, "Instructions", "e.g. after food", m.instructions);
-        CheckBox observed = Ui.check(c, "Observed dose: take it in front of the camera", m.observed);
-        observed.setOnCheckedChangeListener((btn, on) -> m.observed = on);
+        if (form.observable) {
+            CheckBox observed = Ui.check(c, "Observed dose: take it in front of the camera", m.observed);
+            observed.setOnCheckedChangeListener((btn, on) -> m.observed = on);
+        }
+        String advice = DrugInfo.advice(m.name);
+        if (!advice.isEmpty()) foodAdvice(c, advice);
+        Ui.howTo(body, form);
 
         Ui.section(body, "How often");
         LinearLayout o = Ui.card(body, Ui.SURFACE);
@@ -1010,6 +1278,8 @@ public class MainActivity extends Activity {
             });
         }
         f[3] = Ui.textField(o, "Times (24 h, edit freely)", "08:00 20:00", String.join(" ", m.times));
+        if (form == DoseForm.SKIN)
+            Ui.text(o, "Reminders are optional for skin products: leave the times empty to keep only the instructions.", 14, Ui.MUTED, false);
         Ui.text(o, m.everyNDays == 1 ? t("Every day") : tf("Every %d days", m.everyNDays), 15, Ui.MUTED, false);
 
         Ui.section(body, "How long");
@@ -1031,8 +1301,8 @@ public class MainActivity extends Activity {
             });
         }
 
-        Ui.section(body, "Stock (optional)");
-        LinearLayout sc = Ui.card(body, Ui.SURFACE);
+        LinearLayout sc = Ui.card(form.countsStock() ? body : new LinearLayout(this), Ui.SURFACE);
+        if (form.countsStock()) body.addView(sectionLabel("Stock (optional)"), body.indexOfChild(sc));
         int dec = InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL;
         LinearLayout srow = Ui.row(sc);
         LinearLayout s1 = Ui.vbox(this), s2 = Ui.vbox(this);
@@ -1051,15 +1321,36 @@ public class MainActivity extends Activity {
         Ui.button(a, "Save", Ui.PRIMARY, v -> {
             formCapture.run();
             String err = null;
-            RegimenParser.Times t = RegimenParser.parseTimes(f[3].getText().toString());
+            String timesText = f[3].getText().toString().trim();
+            RegimenParser.Times t = RegimenParser.parseTimes(timesText);
+            boolean noTimes = form == DoseForm.SKIN && timesText.isEmpty();
+            if (noTimes) m.times = new ArrayList<>();
             String st = f[6].getText().toString().trim();
             Double sv = RegimenParser.parseNumber(st), pv = RegimenParser.parseNumber(f[7].getText().toString());
             if (m.name.isEmpty()) err = "Please enter the medicine name.";
-            else if (t.error != null) err = tf("%s. Use times like 08:00 20:00.", t(t.error));
+            else if (t.error != null && !noTimes) err = tf("%s. Use times like 08:00 20:00.", t(t.error));
+            else if (form.hasSide() && m.side.isEmpty()) err = form == DoseForm.EYE ? "Please choose which eye." : "Please choose which ear.";
             else if (TimeUtil.parseDate(m.startDate) == null) err = "Start date must look like 2026-10-01.";
             else if (!st.isEmpty() && (sv == null || sv < 0)) err = "Stock must be a number of units, e.g. 30, or left blank.";
             else if (pv == null || pv <= 0) err = "Units per dose must be more than 0, e.g. 1 or 0.5.";
             if (err != null) { buildForm(err); return; }
+            DrugInfo.AllergyCheck allergy = DrugInfo.checkAllergy(data().profile.allergies, m.name);
+            if (allergy.level != DrugInfo.Level.NONE) {
+                new AlertDialog.Builder(this)
+                        .setTitle(t(allergy.level == DrugInfo.Level.DANGER ? "Allergy warning" : "Check this medicine"))
+                        .setMessage(tf(allergy.message, t(allergy.allergen), allergy.drug))
+                        .setPositiveButton(t("Go back"), null)
+                        .setNegativeButton(t("Save anyway"), (dlg, w) -> saveMedication(m))
+                        .show();
+                return;
+            }
+            saveMedication(m);
+        });
+        if (error != null) scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+        else scroll.scrollTo(0, 0);
+    }
+
+    private void saveMedication(Medication m) {
             AppData d = data();
             int idx = -1;
             for (int k = 0; k < d.medications.size(); k++) if (d.medications.get(k).id.equals(m.id)) idx = k;
@@ -1071,9 +1362,52 @@ public class MainActivity extends Activity {
             saveAndSync();
             toast(tf("Saved %s", m.name));
             show(Tab.MEDICINES);
-        });
-        if (error != null) scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
-        else scroll.scrollTo(0, 0);
+    }
+
+    private static String doseHint(DoseForm f) {
+        switch (f) {
+            case LIQUID: return "e.g. 5 ml";
+            case INJECTION: return "e.g. 10 units";
+            case INHALER: return "e.g. 2 puffs";
+            case EYE: case EAR: return "e.g. 1 drop";
+            default: return "e.g. 500 mg, 1 tablet";
+        }
+    }
+
+    /** One tile of the "Type of medicine" picker. */
+    private void formTile(LinearLayout row, DoseForm f, boolean selected, Runnable pick) {
+        LinearLayout tile = Ui.vbox(this);
+        tile.setGravity(Gravity.CENTER_HORIZONTAL);
+        int p = Ui.dp(this, 10);
+        tile.setPadding(p, Ui.dp(this, 14), p, Ui.dp(this, 12));
+        tile.setBackground(Ui.rounded(this, selected ? Ui.PRIMARY : Ui.SURFACE_VARIANT, 18));
+        tile.addView(Ui.icon(this, Ui.formIcon(f), selected ? Ui.ON_PRIMARY : Ui.PRIMARY, 32));
+        TextView l = Ui.text(tile, f.label, 13, selected ? Ui.ON_PRIMARY : Ui.INK, true);
+        l.setGravity(Gravity.CENTER);
+        tile.setOnClickListener(v -> pick.run());
+        tile.setContentDescription(t(f.label));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+        lp.leftMargin = lp.rightMargin = Ui.dp(this, 4);
+        row.addView(tile, lp);
+    }
+
+    /** Food and timing advice, marked as a prompt to check with the pharmacist. */
+    private void foodAdvice(LinearLayout parent, String advice) {
+        LinearLayout box = Ui.vbox(this);
+        box.setBackground(Ui.rounded(this, Ui.DUE_BG, 14));
+        int p = Ui.dp(this, 12);
+        box.setPadding(p, p, p, p);
+        parent.addView(box, Ui.matchWrap(this, 10));
+        Ui.text(box, "Food and timing", 14, Ui.WARN, true);
+        Ui.text(box, advice, 15, Ui.INK, false);
+        Ui.text(box, "General advice; ask your pharmacist if unsure.", 12, Ui.MUTED, false);
+    }
+
+    private TextView sectionLabel(String label) {
+        LinearLayout tmp = new LinearLayout(this);
+        TextView t = Ui.section(tmp, label);
+        tmp.removeView(t);
+        return t;
     }
 
     @Override
@@ -1308,7 +1642,7 @@ public class MainActivity extends Activity {
             Medication m = d.medications.get(k);
             LinearLayout c = Ui.card(body, Ui.SURFACE);
             LinearLayout top = Ui.row(c);
-            top.addView(Ui.drugImage(this, m.photo, 48));
+            top.addView(Ui.drugImage(this, m, 48));
             LinearLayout t = Ui.vbox(this);
             top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
             Ui.text(t, s.label, 18, Ui.INK, true);

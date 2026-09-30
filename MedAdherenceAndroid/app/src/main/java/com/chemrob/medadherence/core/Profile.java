@@ -18,6 +18,7 @@ public final class Profile {
     public String emergencyPhone = "";
     public String caregiverName = "";  // family member or nurse who gets missed-dose alerts; "" = emergency contact
     public String caregiverPhone = "";
+    public String pharmacistPhone = ""; // pharmacy to call about side effects and questions
     public String facePhoto = "";      // enrolment photo taken with face detection, "" if none
     public double[] faceSignature;     // FaceSignature of the enrolled face, or null (older scans)
     public List<float[]> faceEmbeddings = new ArrayList<>(); // face-recognition fingerprints of the enrolled views
@@ -65,6 +66,7 @@ public final class Profile {
         if (!phone.isEmpty() && !isPhone(phone)) return "Please check the phone number.";
         if (!emergencyPhone.isEmpty() && !isPhone(emergencyPhone)) return "Please check the emergency contact's number.";
         if (!caregiverPhone.isEmpty() && !isPhone(caregiverPhone)) return "Please check the caregiver's number.";
+        if (!pharmacistPhone.isEmpty() && !isPhone(pharmacistPhone)) return "Please check the pharmacist's number.";
         return null;
     }
 
@@ -88,7 +90,7 @@ public final class Profile {
         p.name = name; p.dateOfBirth = dateOfBirth; p.sex = sex; p.phone = phone;
         p.conditions = conditions; p.allergies = allergies; p.doctor = doctor;
         p.emergencyName = emergencyName; p.emergencyPhone = emergencyPhone;
-        p.caregiverName = caregiverName; p.caregiverPhone = caregiverPhone;
+        p.caregiverName = caregiverName; p.caregiverPhone = caregiverPhone; p.pharmacistPhone = pharmacistPhone;
         p.facePhoto = facePhoto; p.faceSignature = faceSignature == null ? null : faceSignature.clone();
         p.faceEmbeddings = new ArrayList<>();
         if (faceEmbeddings != null) for (float[] e : faceEmbeddings) p.faceEmbeddings.add(e.clone());

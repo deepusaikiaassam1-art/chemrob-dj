@@ -77,6 +77,7 @@ public final class PdfReport {
         p.chart(d, from, now);
         p.medicines(d, r);
         p.problems(d, from, now);
+        p.sideEffects(d, from, now);
         p.visit(d, now);
         p.finishPage();
         //noinspection ResultOfMethodCallIgnored
@@ -291,7 +292,9 @@ public final class PdfReport {
         for (int k = 0; k < d.medications.size() && k < r.perMedication.size(); k++) {
             Medication m = d.medications.get(k);
             AdherenceStats s = r.perMedication.get(k);
-            String name = m.name + (m.dose.isEmpty() ? "" : " " + m.dose) + (m.observed ? " *" : "") + (m.isActive() ? "" : " (" + t("paused") + ")");
+            String name = m.name + (m.dose.isEmpty() ? "" : " " + m.dose)
+                    + (m.doseForm() == com.chemrob.medadherence.core.DoseForm.TABLET ? "" : " (" + t(m.doseForm().label) + ")")
+                    + (m.observed ? " *" : "") + (m.isActive() ? "" : " (" + t("paused") + ")");
             float h = Math.max(paragraph(name, cols[0] + 4, cols[1] - cols[0] - 8, 9.5f, INK, true, false),
                     paragraph(m.timesLabel(), cols[1] + 4, cols[2] - cols[1] - 8, 9, INK, false, false)) + 6;
             need(h);
@@ -352,6 +355,28 @@ public final class PdfReport {
             y += 15;
         }
         if (rows.size() == 25) line(t("Only the 25 most recent are listed."), 8.5f, MUTED, false);
+    }
+
+    /** Side effects reported in the period, and tablets left over at the end of courses. */
+    private void sideEffects(AppData d, LocalDateTime from, LocalDateTime now) {
+        java.util.List<String[]> rows = new ArrayList<>();
+        for (int i = d.sideEffects.size() - 1; i >= 0 && rows.size() < 20; i--) {
+            com.chemrob.medadherence.core.SideEffect e = d.sideEffects.get(i);
+            LocalDateTime at = TimeUtil.parseMinute(e.at);
+            if (at == null || at.isBefore(from)) continue;
+            rows.add(new String[]{e.at, t(e.symptom.label) + (e.symptom.serious ? "  (" + t("serious") + ")" : ""), e.medicines});
+        }
+        java.util.List<String> leftovers = new ArrayList<>();
+        for (Medication m : d.medications)
+            if (m.leftover > 0) leftovers.add(m.name + ": " + (m.leftover == Math.floor(m.leftover) ? String.valueOf((long) m.leftover) : String.valueOf(m.leftover))
+                    + (m.doseForm().unit.isEmpty() ? "" : " " + t(m.doseForm().unit)));
+        if (rows.isEmpty() && leftovers.isEmpty()) return;
+        section(t("Side effects and leftovers"));
+        for (String[] row : rows) {
+            line(row[0] + "   " + row[1] + (row[2].isEmpty() ? "" : "   (" + row[2] + ")"), 10, row[1].contains(t("serious")) ? BAD : INK, false);
+            y += 4;
+        }
+        if (!leftovers.isEmpty()) line(t("Left over at the end of the course:") + " " + String.join("; ", leftovers), 10, WARN, true);
     }
 
     private void visit(AppData d, LocalDateTime now) {

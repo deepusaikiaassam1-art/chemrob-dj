@@ -125,8 +125,16 @@ public final class Voice {
 
     /** What to say when the patient taps "I took it" / "Take". */
     public static void sayTake(Context c, Medication m) {
-        if (m.dose.isEmpty()) say(c, "Please take your %s now, with a glass of water.", m.name);
-        else say(c, "Please take %s of %s now, with a glass of water.", m.dose, m.name);
+        com.chemrob.medadherence.core.DoseForm f = m.doseForm();
+        if (f == com.chemrob.medadherence.core.DoseForm.TABLET || f == com.chemrob.medadherence.core.DoseForm.LIQUID) {
+            if (m.dose.isEmpty()) say(c, "Please take your %s now, with a glass of water.", m.name);
+            else say(c, "Please take %s of %s now, with a glass of water.", m.dose, m.name);
+        } else {
+            say(c, "Time to use your %s.", m.name);
+            // Inhalers and drops are easy to get wrong: read the steps out.
+            if (f == com.chemrob.medadherence.core.DoseForm.INHALER || f.hasSide())
+                for (String step : f.howTo) then(c, step);
+        }
         if (!m.instructions.isEmpty()) sayRaw(c, m.instructions);
         then(c, "Your dose has been recorded. Well done.");
     }

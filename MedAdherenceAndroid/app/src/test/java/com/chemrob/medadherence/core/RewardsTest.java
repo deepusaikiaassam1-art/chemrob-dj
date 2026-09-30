@@ -27,14 +27,18 @@ public class RewardsTest {
         assertEquals(16, s.taken);
         assertEquals(16, s.onTime);
         // 16 on-time doses + 7 full days (20-24, 26, 27); 28 Sept is not finished yet.
-        assertEquals(16 * Rewards.ON_TIME + 7 * Rewards.FULL_DAY, s.points);
+        // Week of 14 Sept (only Sunday 20th due) is won; the week of 21 Sept had a missed dose.
+        assertEquals(16 * Rewards.ON_TIME + 7 * Rewards.FULL_DAY + Rewards.WEEK_BONUS, s.points);
+        assertEquals(1, s.weeksWon);
+        assertEquals(1, s.weekSettled); // this week (from Monday 28th): the morning dose
+        assertTrue(s.weekOnTrack());
         assertEquals(7, s.fullDays);
         assertEquals(5, s.bestStreak);
         assertEquals(2, s.currentStreak);
         assertEquals(3, s.level);
         assertEquals("Steady", s.levelName);
         assertEquals(600, s.nextLevelAt);
-        assertEquals(0.0, s.levelProgress(), 1e-9);
+        assertEquals(50.0 / 300, s.levelProgress(), 1e-9);
 
         assertTrue(badge(s, "first").earned());
         assertTrue(badge(s, "streak3").earned());
@@ -65,8 +69,8 @@ public class RewardsTest {
         Rewards.State s = Rewards.compute(d, LocalDateTime.of(2026, 9, 10, 12, 0));
         assertTrue(badge(s, "course").earned());
         assertEquals(3, s.verified);
-        assertEquals(3 * (Rewards.ON_TIME + Rewards.VERIFIED_BONUS + Rewards.FULL_DAY), s.points);
-        assertEquals(3, Rewards.newlyEarned(before, s).size()); // first dose, 3-day streak, course
+        assertEquals(3 * (Rewards.ON_TIME + Rewards.VERIFIED_BONUS + Rewards.FULL_DAY) + Rewards.WEEK_BONUS, s.points);
+        assertEquals(4, Rewards.newlyEarned(before, s).size()); // first dose, 3-day streak, course, weekly challenge
     }
 
     private static Rewards.Badge badge(Rewards.State s, String id) {

@@ -22,7 +22,8 @@ public final class JsonCodec {
                         .put("times", new JSONArray(m.times)).put("startDate", m.startDate)
                         .put("durationDays", m.durationDays).put("everyNDays", m.everyNDays)
                         .put("observed", m.observed).put("pauses", new JSONArray(m.pauses)).put("addedBy", m.addedBy)
-                        .put("stock", m.stock).put("unitsPerDose", m.unitsPerDose).put("refillAlertDays", m.refillAlertDays).put("photo", m.photo);
+                        .put("stock", m.stock).put("unitsPerDose", m.unitsPerDose).put("refillAlertDays", m.refillAlertDays).put("photo", m.photo)
+                        .put("form", m.form).put("side", m.side).put("leftover", m.leftover);
                 meds.put(o);
             }
             root.put("medications", meds);
@@ -42,12 +43,17 @@ public final class JsonCodec {
                 appts.put(new JSONObject().put("id", a.id).put("when", a.when).put("doctor", a.doctor)
                         .put("place", a.place).put("purpose", a.purpose).put("done", a.done));
             root.put("appointments", appts);
+            JSONArray effects = new JSONArray();
+            for (SideEffect e : d.sideEffects)
+                effects.put(new JSONObject().put("at", e.at).put("symptom", e.symptom.name()).put("medicines", e.medicines));
+            root.put("sideEffects", effects);
             Profile pr = d.profile;
             root.put("profile", new JSONObject().put("name", pr.name).put("dateOfBirth", pr.dateOfBirth)
                     .put("sex", pr.sex).put("phone", pr.phone).put("conditions", pr.conditions)
                     .put("allergies", pr.allergies).put("doctor", pr.doctor)
                     .put("emergencyName", pr.emergencyName).put("emergencyPhone", pr.emergencyPhone)
                     .put("caregiverName", pr.caregiverName).put("caregiverPhone", pr.caregiverPhone)
+                    .put("pharmacistPhone", pr.pharmacistPhone)
                     .put("facePhoto", pr.facePhoto).put("faceEmbeddings", embeddings(pr.faceEmbeddings)).put("faceSignature", pr.faceSignature == null ? null : doubles(pr.faceSignature)));
             root.put("settings", new JSONObject().put("graceMinutes", s.graceMinutes)
                     .put("onTimeWindowMinutes", s.onTimeWindowMinutes).put("snoozeMinutes", s.snoozeMinutes)
@@ -55,7 +61,7 @@ public final class JsonCodec {
                     .put("patientName", s.patientName).put("theme", s.theme).put("voiceGuidance", s.voiceGuidance)
                     .put("language", s.language).put("caregiverMissedAlerts", s.caregiverMissedAlerts)
                     .put("caregiverDailySummary", s.caregiverDailySummary).put("summaryHour", s.summaryHour)
-                    .put("caregiverLastCheck", s.caregiverLastCheck));
+                    .put("caregiverLastCheck", s.caregiverLastCheck).put("lastCheckIn", s.lastCheckIn));
             return root.toString(1);
         } catch (JSONException e) {
             throw new IllegalStateException(e);
@@ -84,6 +90,9 @@ public final class JsonCodec {
             m.unitsPerDose = o.optDouble("unitsPerDose", 1);
             m.refillAlertDays = o.optInt("refillAlertDays", 5);
             m.photo = o.optString("photo", "");
+            m.form = o.optString("form", "tablet");
+            m.side = o.optString("side", "");
+            m.leftover = o.optDouble("leftover", -1);
             d.medications.add(m);
         }
         JSONArray recs = root.optJSONArray("records");
@@ -114,6 +123,15 @@ public final class JsonCodec {
             a.done = o.optBoolean("done", false);
             d.appointments.add(a);
         }
+        JSONArray effects = root.optJSONArray("sideEffects");
+        for (int i = 0; effects != null && i < effects.length(); i++) {
+            JSONObject o = effects.getJSONObject(i);
+            SideEffect e = new SideEffect();
+            e.at = o.optString("at", "");
+            e.symptom = SideEffect.Symptom.of(o.optString("symptom", ""));
+            e.medicines = o.optString("medicines", "");
+            d.sideEffects.add(e);
+        }
         JSONObject p = root.optJSONObject("profile");
         if (p != null) {
             Profile pr = d.profile;
@@ -128,6 +146,7 @@ public final class JsonCodec {
             pr.emergencyPhone = p.optString("emergencyPhone", "");
             pr.caregiverName = p.optString("caregiverName", "");
             pr.caregiverPhone = p.optString("caregiverPhone", "");
+            pr.pharmacistPhone = p.optString("pharmacistPhone", "");
             pr.facePhoto = p.optString("facePhoto", "");
             JSONArray embs = p.optJSONArray("faceEmbeddings");
             for (int i = 0; embs != null && i < embs.length(); i++) {
@@ -158,6 +177,7 @@ public final class JsonCodec {
             d.settings.caregiverDailySummary = s.optBoolean("caregiverDailySummary", false);
             d.settings.summaryHour = Math.max(0, Math.min(23, s.optInt("summaryHour", 21)));
             d.settings.caregiverLastCheck = s.optString("caregiverLastCheck", "");
+            d.settings.lastCheckIn = s.optString("lastCheckIn", "");
         }
         if (!d.profile.isComplete() && !d.settings.patientName.isEmpty()) d.profile.name = d.settings.patientName;
         return d;

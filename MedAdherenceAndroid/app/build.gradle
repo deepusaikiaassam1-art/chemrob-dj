@@ -10,8 +10,8 @@ android {
         applicationId 'com.chemrob.medadherence'
         minSdk 26
         targetSdk 34
-        versionCode 8
-        versionName '1.6.0'
+        versionCode 9
+        versionName '1.7.0'
 
         // Phones only: ML Kit's native AI libraries are large, and the x86 copies only serve PC emulators.
         ndk {

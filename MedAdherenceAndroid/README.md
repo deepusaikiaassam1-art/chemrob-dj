@@ -132,6 +132,45 @@ To install it:
   a progress ring for the day. There is a light and a dark theme, which follows the phone by
   default and can be changed under Pharmacist → Settings → Appearance.
 
+- **All kinds of medicine.** Each medicine has a type, and each type comes with its own step-by-step
+  "How to use" guide. It is shown on the medicine card and on the ringing screen, and the voice reads
+  it out for inhalers and drops. The types are:
+  - tablet / capsule
+  - syrup / liquid (ml)
+  - injection (units)
+  - inhaler (puffs)
+  - eye drops and ear drops (with left, right or both)
+  - skin products: lotion, cream or oil
+
+  Skin products can be instructions only, with no reminders. Only swallowed medicines can be taken
+  on camera.
+- **Antibiotic courses (stewardship).**
+  - **Course counter:** Today, the medicine card and the alarm show the course's progress, such as
+    "Day 3 of 5 · 9 doses left", with a reminder to finish the whole course.
+  - **Skipping:** skipping an antimicrobial dose asks the patient to finish the full course, and
+    explains why.
+  - **Leftovers:** when a course ends, the app asks how much is left over and tells the patient to
+    return leftovers to the pharmacy. The answer goes into the PDF report.
+- **Allergy check.** When a medicine is saved, its name is compared with the allergies in the
+  profile using a built-in table of drug groups. A penicillin allergy against amoxicillin shows a
+  warning; against a cephalosporin it shows a caution.
+- **Food and timing advice** for common drugs, for example:
+  - ciprofloxacin: keep apart from antacids and milk
+  - doxycycline: stay upright after taking it
+  - metronidazole: no alcohol
+  - rifampicin: take on an empty stomach; it can turn urine orange
+
+  Every piece of advice says to ask the pharmacist if unsure.
+- **Missed-dose guidance.** For a late or missed dose, the app says whether to take it now, or
+  to skip it and wait for the next one. The rule: skip it if the next dose is closer than the
+  missed one. It never suggests taking two doses at once.
+- **Side-effect check-in and one-tap pharmacist call.**
+  - **Daily check-in:** "How do you feel today?" offers common side effects to report.
+  - **Serious symptoms:** swelling of the face, lips or throat, or difficulty breathing, prompt the
+    patient to call the pharmacist or use SOS straight away.
+  - **Calling:** a "Call pharmacist" tile dials the pharmacist's number from the profile.
+  - **Report:** reported side effects appear in the PDF report.
+- **Home-screen widget** showing the next dose, today's progress and the streak.
 - **Rewards that make it a game.** Every dose earns points: 10 on time, 5 late, +5 when a camera
   dose is verified, and +20 for a day with every dose taken. Points raise the patient's level, from
   Starter to Legend. A flame shows the current streak of full days.
@@ -145,6 +184,8 @@ To install it:
   - Camera star
   - 30-day streak
   - 100 doses
+  - Challenge winner (a weekly challenge: every dose on time from Monday to Sunday earns 50 bonus
+    points)
 
   Today shows the level, the points needed for the next one and the closest badge. The Adherence
   tab shows every badge with its progress. Tapping **I took it** pops up the points earned, and
