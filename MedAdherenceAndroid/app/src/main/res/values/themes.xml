@@ -5,6 +5,7 @@
         <item name="android:colorPrimary">#4F46E5</item>
         <item name="android:colorPrimaryDark">#4F46E5</item>
         <item name="android:colorAccent">#4F46E5</item>
+        <item name="android:fontFamily">@font/atkinson</item>
         <item name="android:windowBackground">@color/bg_light</item>
         <item name="android:statusBarColor">@color/bg_light</item>
         <item name="android:navigationBarColor">@color/surface_light</item>
@@ -15,6 +16,7 @@
         <item name="android:colorPrimary">#A5A0FF</item>
         <item name="android:colorPrimaryDark">#A5A0FF</item>
         <item name="android:colorAccent">#A5A0FF</item>
+        <item name="android:fontFamily">@font/atkinson</item>
         <item name="android:windowBackground">@color/bg_dark</item>
         <item name="android:statusBarColor">@color/bg_dark</item>
         <item name="android:navigationBarColor">@color/surface_dark</item>

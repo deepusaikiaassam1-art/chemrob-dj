@@ -22,6 +22,26 @@ To install it:
 
 ## What it does
 
+- **Made for older patients (1.8).** The look follows the MedAdherence redesign:
+  - Atkinson Hyperlegible type everywhere (made for low vision: 1/l/I and 0/O are easy to tell
+    apart), large sizes and one main action per screen.
+  - A welcome screen asks "Which language do you read best?"; a speaker button reads each choice
+    aloud. The main buttons also carry a second language underneath (for example "মই খালোঁ" under
+    "I took it"), chosen in the profile.
+  - Today shows the next dose first, then a **pillbox** for Morning, Noon, Evening and Night, the
+    streak and the level.
+  - **"I took it" is press and hold**: the button fills up under the finger, so a stray tap never
+    records a dose. TalkBack users can double-tap as usual.
+  - The alarm shows the pack photo full width and the course as one bar per day ("Day 3 of 5,
+    9 doses left").
+  - Camera doses show the five steps as a checklist, the seconds left, and "This is Asha" once
+    the face is recognised. The face scan shows the camera in an oval with step bars.
+  - Progress shows one big percentage against the 80 % goal, a 14-day colour strip and each
+    medicine's bar. Badges sit in a grid of three.
+  - Adding a medicine: photo of the pack, name and strength side by side, "What kind?" tiles, times
+    picked as Morning / Noon / Evening / Night (with the OD/BD/TDS code), and a live allergy check
+    as the name is typed.
+  - SOS shows the countdown in a ring and who will be called.
 - **Patient profile first.** On first launch the patient creates a profile, and nothing else is
   available until the name is saved. The profile holds:
   - name, date of birth (picked on day / month / year wheels, with the age shown) and sex
@@ -246,15 +266,18 @@ gradle -p MedAdherenceAndroid testDebugUnitTest assembleRelease
 ```
 app/src/main/java/com/chemrob/medadherence/
   core/    plain Java (unit-tested): schedule, adherence, regimen parser, stock, AI intake rules,
+           day periods and the pillbox (DayPeriod),
            face alignment and matching (FaceMatch, FaceCrop), backup (Backup), caregiver alerts,
            translations (I18n), JSON
   alarm/   AlarmManager scheduling, alarm receiver, boot receiver, ringing notification
-  ui/      MainActivity (profile + all tabs), EmergencyActivity (SOS), FaceEnrollActivity (face scan),
+  ui/      MainActivity (welcome, profile + all tabs), HoldButton (press-and-hold "I took it"), EmergencyActivity (SOS), FaceEnrollActivity (face scan),
            Vision (ML Kit wrapper), Voice (spoken guidance), AlarmActivity (lock-screen ringing with drug photo),
            ObserveActivity (observed-dose camera), PhotoActivity (medicine photo), Ui (theme and widgets),
            FaceRecognizer (TensorFlow Lite), PdfReport, ShareProvider (sharing the PDF), Lang (languages)
   Store.java   the JSON data file in app-private storage
-app/src/main/assets/  face-recognition model (with its licence notice) and translations (i18n/)
+app/src/main/assets/  face-recognition model (with its licence notice), translations (i18n/) and the
+                      font licence (NOTICE-font-OFL.txt)
+app/src/main/res/font/  Atkinson Hyperlegible (SIL Open Font License)
 app/src/test/  JUnit tests for core/ and the translation files
 ```
 
