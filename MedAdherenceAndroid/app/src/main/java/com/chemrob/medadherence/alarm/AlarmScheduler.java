@@ -104,6 +104,7 @@ public final class AlarmScheduler {
         for (String k : p.getAll().keySet())
             if (k.startsWith(K_RINGS) && !pending.contains(k.substring(K_RINGS.length()))) ed.remove(k);
         ed.putStringSet(K_SCHEDULED, scheduled).apply();
+        com.chemrob.medadherence.ui.NextDoseWidget.updateAll(ctx);
     }
 
     /** Alarms that may run a few minutes late (no exact-alarm needed). */

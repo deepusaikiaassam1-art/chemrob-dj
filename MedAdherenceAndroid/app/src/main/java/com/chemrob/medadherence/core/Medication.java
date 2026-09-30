@@ -23,6 +23,9 @@ public final class Medication {
     public double unitsPerDose = 1;
     public int refillAlertDays = 5;
     public String photo = "";          // path of the drug's photo in app storage, "" if none
+    public String form = "tablet";     // DoseForm code: tablet, liquid, injection, inhaler, eye, ear, skin
+    public String side = "";           // eye / ear drops: "left", "right" or "both"
+    public double leftover = -1;       // units left when the course ended; -1 = not asked yet
 
     public LocalDate start() {
         LocalDate d = TimeUtil.parseDate(startDate);
@@ -57,6 +60,8 @@ public final class Medication {
 
     public String timesLabel() { return String.join(", ", times); }
 
+    public DoseForm doseForm() { return DoseForm.of(form); }
+
     public String frequencyLabel() {
         return everyNDays == 1 ? "daily" : everyNDays == 7 ? "weekly" : "every " + everyNDays + " days";
     }
@@ -67,6 +72,7 @@ public final class Medication {
         m.times = new ArrayList<>(times); m.startDate = startDate; m.durationDays = durationDays;
         m.everyNDays = everyNDays; m.observed = observed; m.pauses = new ArrayList<>(pauses);
         m.addedBy = addedBy; m.stock = stock; m.unitsPerDose = unitsPerDose; m.refillAlertDays = refillAlertDays; m.photo = photo;
+        m.form = form; m.side = side; m.leftover = leftover;
         return m;
     }
 }

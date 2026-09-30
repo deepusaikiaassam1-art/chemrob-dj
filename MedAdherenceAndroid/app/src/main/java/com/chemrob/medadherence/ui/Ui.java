@@ -307,8 +307,65 @@ public final class Ui {
 
     /** The drug's photo cropped to a rounded square, or a pill icon when there is none. */
     public static View drugImage(Context c, String photoPath, int sizeDp) {
+        return drugImage(c, photoPath, com.chemrob.medadherence.core.DoseForm.TABLET, sizeDp);
+    }
+
+    /** The medicine's photo, or the icon of its form (pill, drop, inhaler...) when it has none. */
+    public static View drugImage(Context c, com.chemrob.medadherence.core.Medication m, int sizeDp) {
+        return drugImage(c, m.photo, m.doseForm(), sizeDp);
+    }
+
+    public static int formIcon(com.chemrob.medadherence.core.DoseForm f) {
+        switch (f) {
+            case LIQUID: return R.drawable.ic_drop;
+            case INJECTION: return R.drawable.ic_syringe;
+            case INHALER: return R.drawable.ic_inhaler;
+            case EYE: return R.drawable.ic_eye;
+            case EAR: return R.drawable.ic_ear;
+            case SKIN: return R.drawable.ic_lotion;
+            default: return R.drawable.ic_pill;
+        }
+    }
+
+    /** "How to use": the form's steps, numbered, in a tinted box. */
+    public static LinearLayout howTo(ViewGroup parent, com.chemrob.medadherence.core.DoseForm f) {
+        Context c = parent.getContext();
+        LinearLayout box = vbox(c);
+        box.setBackground(rounded(c, PRIMARY_CONTAINER, 16));
+        int p = dp(c, 14);
+        box.setPadding(p, p, p, p);
+        parent.addView(box, matchWrap(c, 12));
+        LinearLayout head = hbox(c);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(icon(c, formIcon(f), ON_PRIMARY_CONTAINER, 22));
+        TextView h = text(head, I18n.t("How to use") + "  ·  " + I18n.t(f.label), 16, ON_PRIMARY_CONTAINER, true);
+        h.setPadding(dp(c, 8), 0, 0, 0);
+        box.addView(head);
+        for (int i = 0; i < f.howTo.length; i++) {
+            LinearLayout row = hbox(c);
+            row.setPadding(0, dp(c, 6), 0, 0);
+            TextView n = new TextView(c);
+            n.setText(String.valueOf(i + 1));
+            n.setGravity(Gravity.CENTER);
+            n.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            n.setTypeface(medium(), Typeface.BOLD);
+            n.setTextColor(ON_PRIMARY);
+            GradientDrawable g = new GradientDrawable();
+            g.setShape(GradientDrawable.OVAL);
+            g.setColor(PRIMARY);
+            n.setBackground(g);
+            LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(dp(c, 24), dp(c, 24));
+            nl.rightMargin = dp(c, 10);
+            row.addView(n, nl);
+            text(row, f.howTo[i], 15, ON_PRIMARY_CONTAINER, false);
+            box.addView(row);
+        }
+        return box;
+    }
+
+    private static View drugImage(Context c, String photoPath, com.chemrob.medadherence.core.DoseForm form, int sizeDp) {
         Bitmap bmp = loadBitmap(photoPath, dp(c, sizeDp));
-        if (bmp == null) return iconCircle(c, R.drawable.ic_pill, PRIMARY_CONTAINER, ON_PRIMARY_CONTAINER, sizeDp);
+        if (bmp == null) return iconCircle(c, formIcon(form), PRIMARY_CONTAINER, ON_PRIMARY_CONTAINER, sizeDp);
         ImageView iv = new ImageView(c);
         iv.setImageBitmap(bmp);
         iv.setScaleType(ImageView.ScaleType.CENTER_CROP);

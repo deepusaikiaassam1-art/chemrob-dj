@@ -17,12 +17,13 @@ import java.util.TreeMap;
  * report.
  *
  * Points: 10 for a dose taken on time, 5 for a late one, +5 when an observed dose is verified,
- * +20 for every day on which all doses were taken.
+ * +20 for every day on which all doses were taken, +50 for winning the weekly challenge (every
+ * dose of a Monday-to-Sunday week taken on time).
  */
 public final class Rewards {
     private Rewards() {}
 
-    public static final int ON_TIME = 10, LATE = 5, VERIFIED_BONUS = 5, FULL_DAY = 20;
+    public static final int ON_TIME = 10, LATE = 5, VERIFIED_BONUS = 5, FULL_DAY = 20, WEEK_BONUS = 50;
 
     /** Points needed to reach each level; level 1 starts at 0. */
     static final int[] LEVEL_AT = {0, 100, 300, 600, 1000, 1500, 2200, 3000, 4000, 5500};
@@ -45,6 +46,11 @@ public final class Rewards {
         public int points, level, levelFloor, nextLevelAt; // nextLevelAt = -1 at the top level
         public String levelName;
         public int taken, onTime, verified, currentStreak, bestStreak, fullDays;
+        /** Weekly challenge: weeks won, and this week's doses so far (settled / taken on time). */
+        public int weeksWon, weekSettled, weekOnTime;
+
+        /** This week's challenge is still winnable. */
+        public boolean weekOnTrack() { return weekOnTime == weekSettled; }
         public List<Badge> badges = new ArrayList<>();
 
         /** Progress towards the next level, 0-1. */
@@ -77,6 +83,7 @@ public final class Rewards {
         Map<LocalDate, Boolean> days = new TreeMap<>();
         Set<LocalDate> open = new HashSet<>(); // days with doses still to come
         Map<String, int[]> perMed = new HashMap<>(); // medId -> {due, taken}
+        Map<LocalDate, int[]> weeks = new TreeMap<>(); // Monday -> {settled, taken on time}
         int window = d.settings.onTimeWindowMinutes;
         for (ScheduledDose x : ScheduleEngine.doses(d, first.atStartOfDay(), now.plusNanos(1))) {
             DoseStatus st = ScheduleEngine.statusOf(d, x, now);
@@ -85,13 +92,15 @@ public final class Rewards {
             days.merge(x.time.toLocalDate(), took, Boolean::logicalAnd);
             int[] pm = perMed.computeIfAbsent(x.med.id, k -> new int[2]);
             pm[0]++;
+            int[] wk = weeks.computeIfAbsent(monday(x.time.toLocalDate()), k -> new int[2]);
+            wk[0]++;
             if (!took) continue;
             pm[1]++;
             s.taken++;
             DoseRecord rec = d.findRecord(x.key());
             LocalDateTime at = rec == null ? null : rec.actionTime();
             boolean onTime = at == null || Math.abs(Duration.between(x.time, at).toMinutes()) <= window;
-            if (onTime) { s.onTime++; s.points += ON_TIME; } else s.points += LATE;
+            if (onTime) { s.onTime++; wk[1]++; s.points += ON_TIME; } else s.points += LATE;
             if (rec != null && (rec.verification == Verification.AUTO_VERIFIED || rec.verification == Verification.PHARMACIST_APPROVED)) {
                 s.verified++;
                 s.points += VERIFIED_BONUS;
@@ -114,6 +123,14 @@ public final class Rewards {
         List<Boolean> order = new ArrayList<>(days.values());
         for (int i = order.size() - 1; i >= 0 && order.get(i); i--) s.currentStreak++;
 
+        LocalDate thisWeek = monday(now.toLocalDate());
+        for (Map.Entry<LocalDate, int[]> w : weeks.entrySet()) {
+            int[] v = w.getValue();
+            if (w.getKey().isBefore(thisWeek)) {
+                if (v[0] > 0 && v[1] == v[0]) { s.weeksWon++; s.points += WEEK_BONUS; }
+            } else if (w.getKey().equals(thisWeek)) { s.weekSettled = v[0]; s.weekOnTime = v[1]; }
+        }
+
         s.level = 1;
         for (int i = 0; i < LEVEL_AT.length; i++) if (s.points >= LEVEL_AT[i]) s.level = i + 1;
         s.levelName = LEVEL_NAMES[s.level - 1];
@@ -134,8 +151,11 @@ public final class Rewards {
         s.badges.add(new Badge("camera", "Camera star", "5 doses verified on camera", 5, s.verified));
         s.badges.add(new Badge("streak30", "30-day streak", "Take every dose 30 days in a row", 30, s.bestStreak));
         s.badges.add(new Badge("hundred", "100 doses", "Take 100 doses", 100, s.taken));
+        s.badges.add(new Badge("challenge", "Challenge winner", "Take every dose on time for a whole week", 1, s.weeksWon));
         return s;
     }
+
+    static LocalDate monday(LocalDate d) { return d.with(java.time.DayOfWeek.MONDAY); }
 
     /** Badges earned in {@code after} that were not earned in {@code before}. */
     public static List<Badge> newlyEarned(State before, State after) {

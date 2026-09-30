@@ -13,5 +13,6 @@ public final class Settings {
     public boolean caregiverMissedAlerts = true;  // offer to tell the caregiver when a dose is missed
     public boolean caregiverDailySummary;         // evening summary to send to the caregiver
     public int summaryHour = 21;
-    public String caregiverLastCheck = "";        // ISO date-time up to which missed doses were reported
+    public String caregiverLastCheck = "";
+    public String lastCheckIn = "";               // yyyy-MM-dd of the last "how do you feel" answer        // ISO date-time up to which missed doses were reported
 }

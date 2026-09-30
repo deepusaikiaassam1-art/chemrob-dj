@@ -21,6 +21,10 @@ import com.chemrob.medadherence.Store;
 import com.chemrob.medadherence.alarm.AlarmReceiver;
 import com.chemrob.medadherence.alarm.Notifications;
 import com.chemrob.medadherence.core.AppData;
+import com.chemrob.medadherence.core.Course;
+import com.chemrob.medadherence.core.DoseForm;
+import com.chemrob.medadherence.core.DrugInfo;
+import com.chemrob.medadherence.core.Medication;
 import com.chemrob.medadherence.core.DoseStatus;
 import com.chemrob.medadherence.core.Inventory;
 import com.chemrob.medadherence.core.ScheduleEngine;
@@ -74,8 +78,9 @@ public class AlarmActivity extends Activity {
     private void show(Intent intent) {
         key = intent.getStringExtra(AlarmReceiver.EXTRA_KEY);
         if (key == null) { finish(); return; }
-        String title, body, instructions = "", photo = null;
+        String title, body, instructions = "", photo = null, courseText = "", advice = "";
         boolean observed = false;
+        Medication med = null;
         if (key.startsWith("TEST|")) {
             title = "Test alarm";
             body = "This is how your medicine reminder rings.";
@@ -90,6 +95,12 @@ public class AlarmActivity extends Activity {
                 instructions += (instructions.isEmpty() ? "" : "\n") + tf("Refill soon: %s", Inventory.label(dose.med));
             observed = dose.med.observed;
             photo = dose.med.photo;
+            med = dose.med;
+            if (med.doseForm().hasSide() && !med.side.isEmpty())
+                body += "  \u00b7  " + t(med.doseForm() == DoseForm.EYE ? "Eye: " + med.side : "Ear: " + med.side);
+            Course c = Course.of(data, med, LocalDateTime.now());
+            if (c != null && !c.finished) courseText = tf("Day %d of %d  ·  %d doses left", c.day, c.days, c.left);
+            advice = DrugInfo.advice(med.name);
         }
 
         LinearLayout root = Ui.vbox(this);
@@ -121,14 +132,29 @@ public class AlarmActivity extends Activity {
             lp.topMargin = Ui.dp(this, 18);
             root.addView(iv, lp);
         } else {
-            FrameLayoutHolder.addCentered(root, Ui.iconCircle(this, R.drawable.ic_pill, Ui.PRIMARY_CONTAINER, Ui.ON_PRIMARY_CONTAINER, 120));
+            FrameLayoutHolder.addCentered(root, Ui.iconCircle(this, med == null ? R.drawable.ic_pill : Ui.formIcon(med.doseForm()),
+                    Ui.PRIMARY_CONTAINER, Ui.ON_PRIMARY_CONTAINER, 120));
         }
 
         LinearLayout info = Ui.card(root, Ui.SURFACE);
         center(Ui.text(info, title, 30, Ui.INK, true));
         center(Ui.text(info, body, 18, Ui.MUTED, false));
         if (!instructions.isEmpty()) center(Ui.text(info, instructions, 17, Ui.INK, false));
+        if (!courseText.isEmpty()) center(Ui.text(info, courseText, 16, Ui.PRIMARY, true));
+        if (!advice.isEmpty()) center(Ui.text(info, advice, 15, Ui.WARN, false));
         if (observed) center(Ui.text(info, "Take this dose in front of the camera.", 16, Ui.WARN, true));
+        if (med != null && med.doseForm() != DoseForm.TABLET) {
+            final DoseForm form = med.doseForm();
+            Ui.button(info, "How to use", Ui.SURFACE_VARIANT, v -> {
+                android.widget.ScrollView sv = new android.widget.ScrollView(this);
+                LinearLayout box = Ui.vbox(this);
+                int pad = Ui.dp(this, 16);
+                box.setPadding(pad, 0, pad, pad);
+                sv.addView(box);
+                Ui.howTo(box, form);
+                new android.app.AlertDialog.Builder(this).setView(sv).setPositiveButton(t("OK"), null).show();
+            });
+        }
 
         final String k = key;
         if (observed) {
@@ -139,11 +165,22 @@ public class AlarmActivity extends Activity {
                 finish();
             }).getLayoutParams().height = Ui.dp(this, 72);
         } else {
-            Ui.button(root, "I took it", Ui.GOOD, v -> act(DoseStatus.TAKEN)).getLayoutParams().height = Ui.dp(this, 72);
+            Ui.button(root, med == null || med.doseForm().observable ? "I took it" : "Done", Ui.GOOD, v -> act(DoseStatus.TAKEN))
+                    .getLayoutParams().height = Ui.dp(this, 72);
         }
         LinearLayout row = Ui.row(root);
         Ui.button(row, "Snooze", Ui.WARN, v -> act(DoseStatus.SNOOZED));
-        Ui.button(row, "Skip", Ui.SURFACE_VARIANT, v -> act(DoseStatus.SKIPPED));
+        final boolean antimicrobial = med != null && DrugInfo.isAntimicrobial(med.name);
+        Ui.button(row, "Skip", Ui.SURFACE_VARIANT, v -> {
+            if (!antimicrobial) { act(DoseStatus.SKIPPED); return; }
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle(t("Finish the full course"))
+                    .setMessage(t("Skipping antibiotic doses can let the infection come back and helps germs become resistant. Take it unless your doctor told you to stop."))
+                    .setPositiveButton(t("I took it"), (dlg, w) -> act(DoseStatus.TAKEN))
+                    .setNeutralButton(t("Skip anyway"), (dlg, w) -> act(DoseStatus.SKIPPED))
+                    .setNegativeButton(t("Cancel"), null)
+                    .show();
+        });
         setContentView(root);
         startVibration();
     }
