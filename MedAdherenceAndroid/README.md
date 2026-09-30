@@ -24,7 +24,7 @@ To install it:
 
 - **Patient profile first.** On first launch the patient creates a profile, and nothing else is
   available until the name is saved. The profile holds:
-  - name, date of birth and sex
+  - name, date of birth (picked on day / month / year wheels, with the age shown) and sex
   - phone number
   - conditions and allergies
   - doctor or pharmacy
@@ -132,6 +132,26 @@ To install it:
   a progress ring for the day. There is a light and a dark theme, which follows the phone by
   default and can be changed under Pharmacist → Settings → Appearance.
 
+- **Rewards that make it a game.** Every dose earns points: 10 on time, 5 late, +5 when a camera
+  dose is verified, and +20 for a day with every dose taken. Points raise the patient's level, from
+  Starter to Legend. A flame shows the current streak of full days.
+
+  Eight badges can be earned:
+  - First dose
+  - 3-day streak
+  - Perfect week
+  - On the dot (20 doses on time)
+  - Course complete
+  - Camera star
+  - 30-day streak
+  - 100 doses
+
+  Today shows the level, the points needed for the next one and the closest badge. The Adherence
+  tab shows every badge with its progress. Tapping **I took it** pops up the points earned, and
+  any level-up or new badge.
+
+  All of this is worked out from the dose history, so it always matches the adherence report.
+  Missed doses simply earn nothing.
 - **Rings the phone at dose times.** A full-screen alarm appears over the lock screen and keeps
   sounding until the patient taps **Taken**, **Snooze** or **Skip**. If nobody answers, it rings
   again every 10 minutes, up to 4 times. Alarms are planned 7 days ahead and re-planned every time

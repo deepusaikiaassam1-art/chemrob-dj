@@ -54,6 +54,7 @@ import com.chemrob.medadherence.core.Inventory;
 import com.chemrob.medadherence.core.Medication;
 import com.chemrob.medadherence.core.Profile;
 import com.chemrob.medadherence.core.RegimenParser;
+import com.chemrob.medadherence.core.Rewards;
 import com.chemrob.medadherence.core.ScheduleEngine;
 import com.chemrob.medadherence.core.ScheduledDose;
 import com.chemrob.medadherence.core.TimeUtil;
@@ -357,8 +358,8 @@ public class MainActivity extends Activity {
         LinearLayout c = Ui.card(body, Ui.SURFACE);
         EditText name = Ui.field(c, "Full name *", "e.g. Asha Devi", p.name,
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PERSON_NAME | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
-        EditText dob = Ui.textField(c, "Date of birth (yyyy-MM-dd)", "e.g. 1962-10-01", p.dateOfBirth);
-        dob.setInputType(InputType.TYPE_CLASS_DATETIME | InputType.TYPE_DATETIME_VARIATION_DATE);
+        final String[] dob = {p.dateOfBirth};
+        birthDateField(c, dob);
         TextView sexLabel = Ui.text(c, "Sex", 14, Ui.MUTED, true);
         ((LinearLayout.LayoutParams) sexLabel.getLayoutParams()).topMargin = Ui.dp(this, 14);
         LinearLayout sexRow = Ui.row(c);
@@ -396,7 +397,7 @@ public class MainActivity extends Activity {
 
         profileCapture = () -> {
             p.name = name.getText().toString().trim();
-            p.dateOfBirth = dob.getText().toString().trim();
+            p.dateOfBirth = dob[0];
             p.sex = sex[0];
             p.phone = phone.getText().toString().trim();
             p.conditions = cond.getText().toString().trim();
@@ -411,7 +412,7 @@ public class MainActivity extends Activity {
         err.setVisibility(View.GONE);
         Ui.button(body, onboarding ? "Create profile" : "Save profile", Ui.PRIMARY, v -> {
             p.name = name.getText().toString().trim();
-            p.dateOfBirth = dob.getText().toString().trim();
+            p.dateOfBirth = dob[0];
             p.sex = sex[0];
             p.phone = phone.getText().toString().trim();
             p.conditions = cond.getText().toString().trim();
@@ -439,6 +440,108 @@ public class MainActivity extends Activity {
         }).getLayoutParams().height = Ui.dp(this, 64);
         if (!onboarding) Ui.button(body, "Cancel", Ui.SURFACE_VARIANT, v -> { profileDraft = null; show(tab); });
         scroll.scrollTo(0, 0);
+    }
+
+    /** Date of birth: a tap opens day / month / year wheels (no typing, no date format to learn). */
+    private void birthDateField(LinearLayout parent, String[] value) {
+        TextView label = Ui.text(parent, "Date of birth", 14, Ui.MUTED, true);
+        ((LinearLayout.LayoutParams) label.getLayoutParams()).topMargin = Ui.dp(this, 14);
+        Button b = new Button(this);
+        b.setAllCaps(false);
+        b.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        b.setBackground(Ui.rounded(this, Ui.SURFACE_VARIANT, 14));
+        b.setStateListAnimator(null);
+        int pad = Ui.dp(this, 14);
+        b.setPadding(pad, pad, pad, pad);
+        b.setCompoundDrawablePadding(Ui.dp(this, 12));
+        android.graphics.drawable.Drawable cal = getDrawable(R.drawable.ic_calendar).mutate();
+        cal.setTint(Ui.PRIMARY);
+        b.setCompoundDrawablesRelativeWithIntrinsicBounds(cal, null, null, null);
+        Runnable show = () -> {
+            LocalDate d = TimeUtil.parseDate(value[0]);
+            if (d == null) {
+                b.setText(t("Tap to choose"));
+                b.setTextColor(Ui.MUTED);
+            } else {
+                String when = d.format(DateTimeFormatter.ofPattern("d MMMM yyyy", I18n.locale()));
+                Integer age = ageOn(d, LocalDate.now());
+                b.setText(age == null ? when : tf("%s (%d years)", when, age));
+                b.setTextColor(Ui.INK);
+            }
+        };
+        show.run();
+        b.setOnClickListener(v -> pickBirthDate(value[0], picked -> { value[0] = picked; show.run(); }));
+        LinearLayout.LayoutParams lp = Ui.matchWrap(this, 6);
+        parent.addView(b, lp);
+    }
+
+    private static Integer ageOn(LocalDate dob, LocalDate today) {
+        return dob.isAfter(today) ? null : java.time.Period.between(dob, today).getYears();
+    }
+
+    private void pickBirthDate(String current, java.util.function.Consumer<String> done) {
+        LocalDate today = LocalDate.now();
+        LocalDate init = TimeUtil.parseDate(current);
+        if (init == null || init.isAfter(today)) init = LocalDate.of(today.getYear() - 60, 1, 1);
+
+        LinearLayout box = Ui.vbox(this);
+        int p = Ui.dp(this, 20);
+        box.setPadding(p, Ui.dp(this, 8), p, 0);
+        LinearLayout wheels = Ui.hbox(this);
+        wheels.setGravity(Gravity.CENTER);
+        box.addView(wheels);
+        android.widget.NumberPicker day = wheel(wheels, "Day", 1, 31, init.getDayOfMonth());
+        android.widget.NumberPicker month = wheel(wheels, "Month", 1, 12, init.getMonthValue());
+        String[] months = new String[12];
+        for (int i = 0; i < 12; i++)
+            months[i] = java.time.Month.of(i + 1).getDisplayName(java.time.format.TextStyle.SHORT, I18n.locale());
+        month.setDisplayedValues(months);
+        android.widget.NumberPicker year = wheel(wheels, "Year", today.getYear() - 120, today.getYear(), init.getYear());
+        TextView age = Ui.text(box, "", 18, Ui.PRIMARY, true);
+        age.setGravity(Gravity.CENTER);
+        Runnable update = () -> {
+            int len = java.time.YearMonth.of(year.getValue(), month.getValue()).lengthOfMonth();
+            day.setMaxValue(len);
+            LocalDate d = LocalDate.of(year.getValue(), month.getValue(), Math.min(day.getValue(), len));
+            Integer a = ageOn(d, today);
+            age.setText(a == null ? t("Date of birth can't be in the future.") : tf("Age: %d years", a));
+            age.setTextColor(a == null ? Ui.BAD : Ui.PRIMARY);
+        };
+        android.widget.NumberPicker.OnValueChangeListener l = (w, o, n) -> update.run();
+        day.setOnValueChangedListener(l);
+        month.setOnValueChangedListener(l);
+        year.setOnValueChangedListener(l);
+        update.run();
+
+        new AlertDialog.Builder(this)
+                .setTitle(t("Date of birth"))
+                .setView(box)
+                .setPositiveButton(t("Done"), (dlg, w) -> {
+                    LocalDate d = LocalDate.of(year.getValue(), month.getValue(), day.getValue());
+                    if (d.isAfter(today)) { toast("Date of birth can't be in the future."); return; }
+                    done.accept(TimeUtil.date(d));
+                })
+                .setNeutralButton(t("Clear"), (dlg, w) -> done.accept(""))
+                .setNegativeButton(t("Cancel"), null)
+                .show();
+    }
+
+    private android.widget.NumberPicker wheel(LinearLayout parent, String label, int min, int max, int value) {
+        LinearLayout col = Ui.vbox(this);
+        col.setGravity(Gravity.CENTER_HORIZONTAL);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+        parent.addView(col, lp);
+        Ui.text(col, label, 14, Ui.MUTED, true).setGravity(Gravity.CENTER);
+        android.widget.NumberPicker w = new android.widget.NumberPicker(this);
+        w.setMinValue(min);
+        w.setMaxValue(max);
+        w.setValue(value);
+        w.setWrapSelectorWheel(!"Year".equals(label));
+        w.setDescendantFocusability(android.widget.NumberPicker.FOCUS_BLOCK_DESCENDANTS); // no keyboard pops up
+        if (Build.VERSION.SDK_INT >= 29) w.setTextSize(Ui.dp(this, 24));
+        col.addView(w, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return w;
     }
 
     private static void restyleChip(Button b, boolean selected) {
@@ -500,6 +603,8 @@ public class MainActivity extends Activity {
         else if (next != null) heroDose(next, false, now);
         Appointment visit = Appointment.next(d.appointments, now);
         if (visit != null && visit.time().isBefore(now.plusDays(14))) visitCard(body, visit, now, false);
+
+        rewardsCard(d, now);
 
         // Progress ring.
         int taken = 0, settled = 0;
@@ -630,13 +735,133 @@ public class MainActivity extends Activity {
     }
 
     private void recordAction(String key, DoseStatus status) {
+        Rewards.State before = status == DoseStatus.TAKEN ? Rewards.compute(data(), LocalDateTime.now()) : null;
         if (status == DoseStatus.TAKEN) {
             ScheduledDose d = ScheduleEngine.find(data(), key);
             if (d != null) Voice.sayTake(this, d.med);
         }
         AlarmReceiver.record(this, key, status);
-        if (status == DoseStatus.TAKEN) toast("Well done!");
         render();
+        if (before != null) celebrate(before, Rewards.compute(data(), LocalDateTime.now()));
+    }
+
+    // ================================================================== Rewards (the game layer)
+
+    /** Level, points, streak and the next badge, on Today. Tapping it opens the badges. */
+    private void rewardsCard(AppData d, LocalDateTime now) {
+        Rewards.State s = Rewards.compute(d, now);
+        LinearLayout c = Ui.card(body, Ui.PRIMARY);
+        c.setOnClickListener(v -> show(Tab.ADHERENCE));
+        LinearLayout top = Ui.row(c);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.addView(Ui.iconCircle(this, R.drawable.ic_trophy, Ui.ON_PRIMARY, Ui.PRIMARY, 56));
+        LinearLayout t = Ui.vbox(this);
+        top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        Ui.text(t, tf("Level %d · %s", s.level, t(s.levelName)), 21, Ui.ON_PRIMARY, true);
+        Ui.text(t, tf("%d points", s.points), 16, Ui.ON_PRIMARY, false);
+        LinearLayout streak = Ui.hbox(this);
+        streak.setGravity(Gravity.CENTER_VERTICAL);
+        int pad = Ui.dp(this, 10);
+        streak.setPadding(pad, Ui.dp(this, 6), pad + Ui.dp(this, 4), Ui.dp(this, 6));
+        streak.setBackground(Ui.rounded(this, translucent(Ui.ON_PRIMARY, 40), 20));
+        streak.addView(Ui.icon(this, R.drawable.ic_flame, s.currentStreak > 0 ? 0xFFFFB020 : Ui.ON_PRIMARY, 24));
+        TextView n = new TextView(this);
+        n.setText(String.valueOf(s.currentStreak));
+        n.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        n.setTypeface(Ui.medium(), Typeface.BOLD);
+        n.setTextColor(Ui.ON_PRIMARY);
+        n.setPadding(Ui.dp(this, 4), 0, 0, 0);
+        streak.addView(n);
+        streak.setContentDescription(tf("%d-day streak", s.currentStreak));
+        top.addView(streak);
+
+        xpBar(c, s.levelProgress(), Ui.ON_PRIMARY, translucent(Ui.ON_PRIMARY, 50));
+        Ui.text(c, s.nextLevelAt < 0 ? t("Top level reached") : tf("%d points to Level %d", s.nextLevelAt - s.points, s.level + 1),
+                14, Ui.ON_PRIMARY, false);
+        Rewards.Badge next = s.nextBadge();
+        if (next != null) Ui.text(c, tf("Next badge: %s (%d/%d)", t(next.title), next.progress, next.target), 15, Ui.ON_PRIMARY, true);
+    }
+
+    private static int translucent(int color, int alpha) {
+        return (alpha << 24) | (color & 0x00FFFFFF);
+    }
+
+    private void xpBar(LinearLayout parent, double fraction, int fillColor, int trackColor) {
+        FrameLayout track = new FrameLayout(this);
+        track.setBackground(Ui.rounded(this, trackColor, 7));
+        LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 14));
+        tl.topMargin = Ui.dp(this, 14);
+        parent.addView(track, tl);
+        View fill = new View(this);
+        fill.setBackground(Ui.rounded(this, fillColor, 7));
+        track.addView(fill, new FrameLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT));
+        double f = Math.max(0, Math.min(1, fraction));
+        track.post(() -> {
+            fill.getLayoutParams().width = (int) (track.getWidth() * f);
+            fill.requestLayout();
+        });
+    }
+
+    /** Badge collection on the Adherence tab: earned ones in colour, the rest with their progress. */
+    private void badges(Rewards.State s) {
+        Ui.section(body, tf("Badges (%d of %d)", s.earnedCount(), s.badges.size()));
+        LinearLayout row = null;
+        for (int i = 0; i < s.badges.size(); i++) {
+            Rewards.Badge b = s.badges.get(i);
+            if (i % 2 == 0) {
+                row = Ui.row(body);
+                ((LinearLayout.LayoutParams) row.getLayoutParams()).topMargin = Ui.dp(this, 10);
+            }
+            LinearLayout cell = Ui.vbox(this);
+            cell.setBackground(Ui.rounded(this, b.earned() ? Ui.GOOD_BG : Ui.SURFACE, 20));
+            int p = Ui.dp(this, 14);
+            cell.setPadding(p, p, p, p);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+            if (i % 2 == 0) lp.rightMargin = Ui.dp(this, 5); else lp.leftMargin = Ui.dp(this, 5);
+            row.addView(cell, lp);
+            cell.addView(Ui.iconCircle(this, b.earned() ? R.drawable.ic_trophy : R.drawable.ic_lock,
+                    b.earned() ? Ui.GOOD : Ui.SURFACE_VARIANT, b.earned() ? Ui.ON_STATUS : Ui.MUTED, 44));
+            TextView title = Ui.text(cell, b.title, 17, Ui.INK, true);
+            ((LinearLayout.LayoutParams) title.getLayoutParams()).topMargin = Ui.dp(this, 8);
+            Ui.text(cell, b.description, 14, Ui.MUTED, false);
+            if (b.earned()) Ui.text(cell, "Earned", 14, Ui.GOOD, true);
+            else {
+                xpBar(cell, (double) b.progress / b.target, Ui.PRIMARY, Ui.SURFACE_VARIANT);
+                Ui.text(cell, b.progress + " / " + b.target, 14, Ui.MUTED, false);
+            }
+        }
+        if (row != null && row.getChildCount() == 1) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+    }
+
+    /** Points earned, a level-up and new badges, shown after "I took it". */
+    private void celebrate(Rewards.State before, Rewards.State after) {
+        int gained = after.points - before.points;
+        if (gained <= 0) return;
+        LinearLayout v = Ui.vbox(this);
+        v.setGravity(Gravity.CENTER_HORIZONTAL);
+        int p = Ui.dp(this, 24);
+        v.setPadding(p, p, p, Ui.dp(this, 8));
+        FrameLayout star = Ui.iconCircle(this, R.drawable.ic_trophy, Ui.GOOD, Ui.ON_STATUS, 88);
+        ((LinearLayout.LayoutParams) star.getLayoutParams()).rightMargin = 0;
+        v.addView(star);
+        TextView pts = Ui.text(v, tf("+%d points", gained), 34, Ui.PRIMARY, true);
+        pts.setGravity(Gravity.CENTER);
+        Ui.text(v, "Well done!", 20, Ui.INK, true).setGravity(Gravity.CENTER);
+        if (after.currentStreak > 0)
+            Ui.text(v, tf("%d-day streak", after.currentStreak), 17, Ui.WARN, true).setGravity(Gravity.CENTER);
+        if (after.level > before.level)
+            Ui.text(v, tf("Level up! You are now Level %d · %s", after.level, t(after.levelName)), 18, Ui.GOOD, true).setGravity(Gravity.CENTER);
+        for (Rewards.Badge b : Rewards.newlyEarned(before, after))
+            Ui.text(v, tf("New badge: %s", t(b.title)), 18, Ui.GOOD, true).setGravity(Gravity.CENTER);
+        AlertDialog dlg = new AlertDialog.Builder(this).setView(v).setPositiveButton(t("Great!"), null).show();
+        // A small pop so the moment feels rewarding.
+        star.setScaleX(0.3f);
+        star.setScaleY(0.3f);
+        star.animate().scaleX(1f).scaleY(1f).setDuration(450).setInterpolator(new android.view.animation.OvershootInterpolator(2.5f)).start();
+        pts.setAlpha(0f);
+        pts.setTranslationY(Ui.dp(this, 16));
+        pts.animate().alpha(1f).translationY(0).setStartDelay(200).setDuration(400).start();
+        scroll.postDelayed(() -> { if (dlg.isShowing() && !isFinishing()) dlg.dismiss(); }, 6000);
     }
 
     // ================================================================== Medicines
@@ -1092,6 +1317,8 @@ public class MainActivity extends Activity {
             Ui.text(c, tf("On time %.0f%%  ·  late %d  ·  missed %d  ·  skipped %d",
                     s.timingPercent(), s.late, s.missed, s.skipped), 14, Ui.MUTED, false);
         }
+
+        badges(Rewards.compute(d, now));
 
         LinearLayout a = Ui.row(body);
         ((LinearLayout.LayoutParams) a.getLayoutParams()).topMargin = Ui.dp(this, 8);
