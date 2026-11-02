@@ -100,23 +100,19 @@ public class ShopActivity extends Activity {
         if (items.isEmpty()) return;
 
         int accent = Max.accent(category.ordinal());
-        Max.rule(body, accent, Max.lighten(accent, 0.55f));
-        Ui.text(body, category.label, 22, Ui.INK, true)
-                .setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 2));
+        Max.banner(body, category.label, accent);
 
         for (ShopItem item : items) tile(body, item, accent);
     }
 
-    /** One product: icon chip, name, what it is for, approximate price, and the shop button. */
+    /** One product: icon chip, name, a tilted price sticker, what it is for, and the shop button. */
     private void tile(LinearLayout body, ShopItem item, int accent) {
-        LinearLayout card = Max.edgeCard(body, accent);
+        LinearLayout card = Max.frameCard(body, accent);
 
         LinearLayout top = Ui.row(card);
         int iconRes = getResources().getIdentifier(item.icon, "drawable", getPackageName());
         if (iconRes != 0) {
-            FrameLayout chip = Ui.iconCircle(this, iconRes,
-                    Color.argb(Ui.dark ? 54 : 30, Color.red(accent), Color.green(accent), Color.blue(accent)),
-                    accent, 46);
+            FrameLayout chip = Ui.iconCircle(this, iconRes, accent, Color.WHITE, 52);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.rightMargin = Ui.dp(this, 12);
@@ -124,12 +120,11 @@ public class ShopActivity extends Activity {
         }
         LinearLayout words = Ui.vbox(this);
         top.addView(words, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        Ui.text(words, item.name, 19, Ui.INK, true);
-        Ui.text(words, tf("about %s", "₹" + item.approxRupees), 15, accent, true)
-                .setPadding(0, Ui.dp(this, 2), 0, 0);
+        Ui.text(words, item.name, 20, Ui.INK, true);
+        Max.priceTag(words, tf("about %s", "₹" + item.approxRupees), accent);
 
         Ui.text(card, item.blurb, 16, Ui.MUTED, false)
-                .setPadding(0, Ui.dp(this, 10), 0, 0);
+                .setPadding(0, Ui.dp(this, 12), 0, 0);
 
         Max.bigAction(card, "See it in the shop", accent, Max.lighten(accent, 0.3f),
                 v -> open(item));

@@ -75,21 +75,26 @@ public final class Max {
     }
 
     /**
-     * A full-bleed hero panel: gradient, a scatter of translucent circles, and whatever is added
-     * to the returned column on top. Returns the content column, not the panel.
+     * A full-bleed hero panel: gradient, diagonal stripes, a scatter of translucent circles, a
+     * bright keyline, and whatever is added to the returned column on top. Four layers is the
+     * point - this is the loudest thing in the app. Returns the content column, not the panel.
      */
     public static LinearLayout hero(ViewGroup parent, int from, int to) {
         Context c = parent.getContext();
         FrameLayout panel = new FrameLayout(c);
-        panel.setBackground(gradient(c, from, to, 28));
+        GradientDrawable base = gradient(c, from, to, 28);
+        base.setStroke(Ui.dp(c, 3), Color.argb(80, 255, 255, 255));
+        panel.setBackground(base);
         panel.setClipToOutline(true);
         panel.setOutlineProvider(new android.view.ViewOutlineProvider() {
             @Override public void getOutline(View v, android.graphics.Outline o) {
                 o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), Ui.dp(c, 28));
             }
         });
-        panel.addView(new Confetti(c), new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        FrameLayout.LayoutParams fill = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        panel.addView(new Stripes(c, Color.argb(30, 255, 255, 255)), fill);
+        panel.addView(new Confetti(c), new FrameLayout.LayoutParams(fill));
 
         LinearLayout content = Ui.vbox(c);
         int pad = Ui.dp(c, 20);
@@ -99,6 +104,86 @@ public final class Max {
 
         parent.addView(panel, Ui.matchWrap(c, 14));
         return content;
+    }
+
+    /**
+     * A heading that takes the full width as a solid colour banner with a chunky left block, used
+     * instead of a plain text heading on the loud screens.
+     */
+    public static LinearLayout banner(ViewGroup parent, String label, int color) {
+        Context c = parent.getContext();
+        LinearLayout row = Ui.hbox(c);
+        row.setBackground(sticker(c, color, lighten(color, 0.22f), 16));
+        row.setPadding(Ui.dp(c, 8), Ui.dp(c, 8), Ui.dp(c, 16), Ui.dp(c, 8));
+
+        View block = new View(c);
+        block.setBackground(Ui.rounded(c, Color.argb(90, 255, 255, 255), 8));
+        LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(Ui.dp(c, 14), Ui.dp(c, 34));
+        bl.rightMargin = Ui.dp(c, 12);
+        row.addView(block, bl);
+
+        TextView t = new TextView(c);
+        t.setText(I18n.t(label));
+        t.setTypeface(Ui.medium(), android.graphics.Typeface.BOLD);
+        t.setTextSize(20);
+        t.setTextColor(Color.WHITE);
+        t.setLetterSpacing(0.02f);
+        row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        parent.addView(row, Ui.matchWrap(c, 18));
+        return row;
+    }
+
+    /**
+     * A card inside a thick accent frame, with a dotted tint behind the content. Louder than
+     * {@link #edgeCard} and used for the shop's product tiles.
+     */
+    public static LinearLayout frameCard(ViewGroup parent, int accent) {
+        Context c = parent.getContext();
+        FrameLayout outer = new FrameLayout(c);
+        GradientDrawable frame = new GradientDrawable();
+        frame.setColor(Ui.SURFACE);
+        frame.setCornerRadius(Ui.dp(c, 22));
+        frame.setStroke(Ui.dp(c, 3), accent);
+        outer.setBackground(frame);
+        outer.setClipToOutline(true);
+        outer.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override public void getOutline(View v, android.graphics.Outline o) {
+                o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), Ui.dp(c, 22));
+            }
+        });
+        outer.addView(new Dots(c, Color.argb(Ui.dark ? 28 : 22,
+                        Color.red(accent), Color.green(accent), Color.blue(accent))),
+                new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+
+        LinearLayout content = Ui.vbox(c);
+        int p = Ui.dp(c, 16);
+        content.setPadding(p, p, p, p);
+        outer.addView(content, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        parent.addView(outer, Ui.matchWrap(c, 14));
+        return content;
+    }
+
+    /** A price sticker: solid accent, white text, tilted a few degrees so it reads as stuck on. */
+    public static TextView priceTag(ViewGroup parent, String text, int color) {
+        Context c = parent.getContext();
+        TextView t = new TextView(c);
+        t.setText(text);
+        t.setTypeface(Ui.medium(), android.graphics.Typeface.BOLD);
+        t.setTextSize(17);
+        t.setTextColor(Color.WHITE);
+        t.setBackground(sticker(c, color, lighten(color, 0.25f), 14));
+        t.setPadding(Ui.dp(c, 14), Ui.dp(c, 7), Ui.dp(c, 14), Ui.dp(c, 7));
+        t.setRotation(-3f);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = Ui.dp(c, 8);
+        t.setLayoutParams(lp);
+        parent.addView(t);
+        return t;
     }
 
     /** Oversized display text for a hero panel. */
@@ -170,6 +255,54 @@ public final class Max {
         b.setOnClickListener(l);
         parent.addView(b, Ui.matchWrap(c, 12));
         return b;
+    }
+
+    /** Diagonal stripes, drawn edge to edge. One of the layers that makes a hero panel busy. */
+    public static final class Stripes extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        public Stripes(Context c, int color) {
+            super(c);
+            paint.setColor(color);
+            paint.setStyle(Paint.Style.FILL);
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            int w = getWidth(), h = getHeight();
+            if (w == 0 || h == 0) return;
+            float band = Ui.dp(getContext(), 22);
+            // 45-degree bands: step along the x axis and shear each one by the panel height.
+            for (float x = -h; x < w + h; x += band * 2) {
+                android.graphics.Path p = new android.graphics.Path();
+                p.moveTo(x, h);
+                p.lineTo(x + h, 0);
+                p.lineTo(x + h + band, 0);
+                p.lineTo(x + band, h);
+                p.close();
+                canvas.drawPath(p, paint);
+            }
+        }
+    }
+
+    /** A polka-dot tint, used behind the content of a framed card. */
+    public static final class Dots extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        public Dots(Context c, int color) {
+            super(c);
+            paint.setColor(color);
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            int w = getWidth(), h = getHeight();
+            if (w == 0 || h == 0) return;
+            float step = Ui.dp(getContext(), 18), r = Ui.dp(getContext(), 2.5f);
+            for (int row = 0; row * step < h + step; row++) {
+                float y = row * step;
+                float offset = (row % 2 == 0) ? 0 : step / 2f;   // brick-laid, not a grid
+                for (float x = offset; x < w + step; x += step) canvas.drawCircle(x, y, r, paint);
+            }
+        }
     }
 
     /**
