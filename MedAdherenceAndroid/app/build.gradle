@@ -10,13 +10,32 @@ android {
         applicationId 'com.chemrob.medadherence'
         minSdk 26
         targetSdk 34
-        versionCode 10
-        versionName '1.8.0'
+        versionCode 11
+        versionName '1.9.0'
 
         // Phones only: ML Kit's native AI libraries are large, and the x86 copies only serve PC emulators.
         ndk {
             abiFilters 'arm64-v8a', 'armeabi-v7a'
         }
+
+        // The accessories shop. Build the pilot-study APK with -PpilotBuild=true and the shop is
+        // compiled out of the UI entirely, so the trial measures adherence with no commercial
+        // prompt in front of the patient.
+        //
+        //     ./gradlew assembleRelease -PpilotBuild=true
+        //
+        // The affiliate tag is empty unless one is supplied, and an empty tag means the links open
+        // as ordinary product pages:
+        //
+        //     ./gradlew assembleRelease -PaffiliateTag=yourtag-21
+        buildConfigField 'boolean', 'SHOP',
+                (project.hasProperty('pilotBuild') && project.pilotBuild.toBoolean()) ? 'false' : 'true'
+        buildConfigField 'String', 'AFFILIATE_TAG',
+                "\"${project.hasProperty('affiliateTag') ? project.affiliateTag : ''}\""
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     androidResources {

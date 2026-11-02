@@ -22,6 +22,17 @@ To install it:
 
 ## What it does
 
+- **Two looks, on purpose (1.9).** The screens a patient reads while deciding whether to swallow a
+  tablet — Today, the ringing alarm, the camera-observed dose — stay plain, high-contrast and
+  large-typed, because that is what makes the app usable by the older patients it was built for.
+  The screens they only browse — Progress, rewards, the welcome screen and the shop — carry a
+  maximalist treatment instead: saturated gradients, patterned panels, sticker tiles and oversized
+  display type (`ui/Max.java`). The split is the whole point: loud where it costs nothing, calm
+  where a mistake costs a dose.
+- **Accessories shop (1.9).** A separate window, reached from the foot of Progress, listing
+  non-drug accessories — pill boxes, a vibrating reminder watch, a pill cutter, measuring spoons,
+  a thermometer, masks — with affiliate links, so the project has a way to pay for itself.
+  See [Shop and affiliate links](#shop-and-affiliate-links) for the rules it follows.
 - **Made for older patients (1.8).** The look follows the MedAdherence redesign:
   - Atkinson Hyperlegible type everywhere (made for low vision: 1/l/I and 0/O are easy to tell
     apart), large sizes and one main action per screen.
@@ -261,6 +272,44 @@ gradle -p MedAdherenceAndroid testDebugUnitTest assembleRelease
 # APK: MedAdherenceAndroid/app/build/outputs/apk/release/app-release.apk
 ```
 
+## Shop and affiliate links
+
+The shop is the app's one revenue idea, and it is deliberately fenced off from the medicine the app
+tracks.
+
+**No medicines, ever.** Every item is a non-drug accessory. Promoting and selling drugs online in
+India is governed by the Drugs and Cosmetics Act and its rules, and an adherence app earning a
+commission on the medicine it tells you to take would be in plain conflict with its own purpose.
+`Shop.containsNoMedicines()` is asserted by `ShopTest`, so a later edit cannot quietly add one.
+
+**No network from the app.** The catalogue is compiled in; nothing is fetched. A tap hands the URL
+to the phone's browser, so "no data leaves the phone" stays true of the app itself. Prices are shown
+as approximate because the app cannot check them.
+
+**Disclosed every time.** The first card under the shop's title says that a purchase may earn the
+project a commission, that nothing listed is a medicine, and that the app never needs a purchase to
+work. It cannot be dismissed.
+
+**Off during the pilot study.** Build the trial APK with the shop compiled out, so participants
+never see a commercial prompt and the adherence data stays clean:
+
+```bash
+gradle -p MedAdherenceAndroid assembleRelease -PpilotBuild=true
+```
+
+**Turning it on.** The affiliate tag is empty by default, and an empty tag means every link opens as
+an ordinary product page. Supply one at build time once an affiliate account exists:
+
+```bash
+gradle -p MedAdherenceAndroid assembleRelease -PaffiliateTag=yourtag-21
+```
+
+Only Amazon India's `tag=` parameter is understood. A link to any other seller is passed through
+untouched rather than guessed at, because a wrong tracking parameter is worse than none.
+
+One caveat worth repeating to an ethics committee: the shop is **off** in the pilot build, and the
+numbers in the study therefore describe an app with no shop in it.
+
 ## Code layout
 
 ```
@@ -268,9 +317,10 @@ app/src/main/java/com/chemrob/medadherence/
   core/    plain Java (unit-tested): schedule, adherence, regimen parser, stock, AI intake rules,
            day periods and the pillbox (DayPeriod),
            face alignment and matching (FaceMatch, FaceCrop), backup (Backup), caregiver alerts,
-           translations (I18n), JSON
+           translations (I18n), JSON, the accessories catalogue (Shop, ShopItem)
   alarm/   AlarmManager scheduling, alarm receiver, boot receiver, ringing notification
   ui/      MainActivity (welcome, profile + all tabs), HoldButton (press-and-hold "I took it"), EmergencyActivity (SOS), FaceEnrollActivity (face scan),
+           ShopActivity (accessories shop), Max (the maximalist look: gradients, stickers, display type),
            Vision (ML Kit wrapper), Voice (spoken guidance), AlarmActivity (lock-screen ringing with drug photo),
            ObserveActivity (observed-dose camera), PhotoActivity (medicine photo), Ui (theme and widgets),
            FaceRecognizer (TensorFlow Lite), PdfReport, ShareProvider (sharing the PDF), Lang (languages)

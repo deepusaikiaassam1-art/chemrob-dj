@@ -9,6 +9,7 @@ import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -35,6 +36,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.chemrob.medadherence.BuildConfig;
 import com.chemrob.medadherence.R;
 import com.chemrob.medadherence.Store;
 import com.chemrob.medadherence.alarm.AlarmReceiver;
@@ -329,14 +331,14 @@ public class MainActivity extends Activity {
         top.setPadding(Ui.dp(this, 8), Ui.dp(this, 28), Ui.dp(this, 8), 0);
         body.addView(top);
         FrameLayout logo = new FrameLayout(this);
-        logo.setBackground(Ui.rounded(this, Ui.PRIMARY, 22));
+        logo.setBackground(Max.sticker(this, Ui.PRIMARY, Max.pink(), 22));
         ImageView mark = new ImageView(this);
         mark.setImageResource(R.drawable.ic_launcher_foreground);
         mark.setRotation(-40);
         logo.addView(mark, new FrameLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96), Gravity.CENTER));
         logo.setClipToOutline(true);
         top.addView(logo, new LinearLayout.LayoutParams(Ui.dp(this, 72), Ui.dp(this, 72)));
-        TextView title = Ui.text(top, "Welcome to MedAdherence", 32, Ui.INK, true);
+        TextView title = Max.display(top, "Welcome to MedAdherence", 34, Ui.INK);
         ((LinearLayout.LayoutParams) title.getLayoutParams()).topMargin = Ui.dp(this, 20);
         Ui.text(top, "Which language do you read best? Tap the speaker to hear it.", 19, Ui.MUTED, false);
 
@@ -1184,6 +1186,9 @@ public class MainActivity extends Activity {
     private void rewardsCard(AppData d, LocalDateTime now) {
         Rewards.State s = Rewards.compute(d, now);
         LinearLayout c = Ui.card(body, Ui.PRIMARY);
+        // A gradient between two colours that track the palette's lightness the same way, so the
+        // ON_PRIMARY text below keeps its contrast in both the light and the dark theme.
+        c.setBackground(Max.sticker(this, Ui.PRIMARY, Max.pink(), 22));
         c.setOnClickListener(v -> show(Tab.ADHERENCE));
         LinearLayout top = Ui.row(c);
         top.setGravity(Gravity.CENTER_VERTICAL);
@@ -1967,28 +1972,38 @@ public class MainActivity extends Activity {
             Ui.chip(periods, p == 0 ? t("All") : tf("%d days", p), adherenceDays == p, v -> { adherenceDays = p; render(); });
         }
 
-        // The headline: one big percentage against the 80 % goal, and the last 14 days as a strip.
+        // The headline, as a full-bleed gradient panel: one big percentage against the 80 % goal,
+        // and the last 14 days as a strip. Progress is a screen patients browse rather than act on,
+        // so it carries the loud treatment; Today and the alarm stay plain and high-contrast.
         AdherenceStats o = r.overall;
-        LinearLayout hero = Ui.card(body, Ui.SURFACE);
+        int base = o.due == 0 ? Max.violet() : Ui.colorFor(o.takingPercent());
+        LinearLayout hero = Max.hero(body, Max.darken(base, 0.14f), Max.lighten(base, 0.26f));
         LinearLayout hr = Ui.row(hero);
-        TextView pct = Ui.text(hr, "", 64, Ui.colorFor(o.takingPercent()), true);
+        TextView pct = Ui.text(hr, "", 64, Color.WHITE, true);
         pct.setText(o.due == 0 ? "–" : String.format(Locale.ROOT, "%.0f%%", o.takingPercent()));
         pct.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         pct.setIncludeFontPadding(false);
         if (o.due > 0) {
-            double v = o.takingPercent();
-            int bg = v >= 80 ? Ui.GOOD_BG : v >= 50 ? Ui.DUE_BG : Ui.ALERT_BG;
             TextView cat = Ui.badge(hr, o.category(), Ui.GOOD);
-            cat.setBackground(Ui.rounded(this, bg, 12));
-            cat.setTextColor(statusInk(v));
+            cat.setBackground(Ui.rounded(this, Color.argb(64, 255, 255, 255), 12));
+            cat.setTextColor(Color.WHITE);
             cat.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
             ((LinearLayout.LayoutParams) cat.getLayoutParams()).leftMargin = Ui.dp(this, 14);
         }
         Ui.text(hero, o.due == 0 ? t("No doses due yet")
-                : tf("You took %d of %d doses. The goal is 80%% or more.", o.taken, o.due), 17, Ui.INK, false);
+                : tf("You took %d of %d doses. The goal is 80%% or more.", o.taken, o.due),
+                17, Color.argb(232, 255, 255, 255), false);
 
-        LinearLayout strip = Ui.row(hero);
-        ((LinearLayout.LayoutParams) strip.getLayoutParams()).topMargin = Ui.dp(this, 14);
+        // The day cells keep their own red/amber/green, so they sit on a translucent panel rather
+        // than directly on a gradient of the same hue.
+        LinearLayout stripPanel = Ui.vbox(this);
+        stripPanel.setBackground(Ui.rounded(this, Color.argb(48, 255, 255, 255), 16));
+        int sp = Ui.dp(this, 10);
+        stripPanel.setPadding(sp, sp, sp, sp);
+        hero.addView(stripPanel, Ui.matchWrap(this, 14));
+
+        LinearLayout strip = Ui.row(stripPanel);
+        ((LinearLayout.LayoutParams) strip.getLayoutParams()).topMargin = 0;
         for (int i = 13; i >= 0; i--) {
             LocalDate day = now.toLocalDate().minusDays(i);
             LocalDateTime end = i == 0 ? now : day.plusDays(1).atStartOfDay().minusNanos(1);
@@ -1998,7 +2013,7 @@ public class MainActivity extends Activity {
             g.setCornerRadius(Ui.dp(this, 6));
             boolean pendingToday = i == 0 && hasPendingToday(d, now);
             if (pendingToday && ds.due == 0) { g.setColor(Ui.DUE_BG); g.setStroke(Ui.dp(this, 2), Ui.WARN); }
-            else g.setColor(ds.due == 0 ? Ui.SURFACE_VARIANT : Ui.colorFor(ds.takingPercent()));
+            else g.setColor(ds.due == 0 ? Color.argb(70, 255, 255, 255) : Ui.colorFor(ds.takingPercent()));
             cell.setBackground(g);
             cell.setContentDescription(day.format(DateTimeFormatter.ofPattern("d MMM", I18n.locale())) + ": "
                     + (ds.due == 0 ? t("none due") : String.format(Locale.ROOT, "%.0f%%", ds.takingPercent())));
@@ -2006,12 +2021,13 @@ public class MainActivity extends Activity {
             lp.leftMargin = lp.rightMargin = Ui.dp(this, 2);
             strip.addView(cell, lp);
         }
-        LinearLayout legend = Ui.row(hero);
+        LinearLayout legend = Ui.row(stripPanel);
         ((LinearLayout.LayoutParams) legend.getLayoutParams()).topMargin = Ui.dp(this, 10);
-        legendItem(legend, Ui.GOOD, "All taken");
-        legendItem(legend, Ui.WARN, "Some missed");
-        legendItem(legend, Ui.BAD, "Most missed");
-        Ui.text(hero, r.currentStreakDays == 1 ? t("Streak: 1 day") : tf("Streak: %d days", r.currentStreakDays), 16, Ui.PRIMARY, true);
+        legendItem(legend, Ui.GOOD, "All taken", Color.WHITE);
+        legendItem(legend, Ui.WARN, "Some missed", Color.WHITE);
+        legendItem(legend, Ui.BAD, "Most missed", Color.WHITE);
+        Ui.text(hero, r.currentStreakDays == 1 ? t("Streak: 1 day") : tf("Streak: %d days", r.currentStreakDays),
+                16, Color.WHITE, true);
 
         if (!r.perMedication.isEmpty()) {
             Ui.section(body, "Each medicine");
@@ -2047,6 +2063,30 @@ public class MainActivity extends Activity {
         if (!d.profile.caregiverNumber().isEmpty())
             Ui.button(a2, "Send to caregiver", Ui.SURFACE_VARIANT, v -> sendToCaregiver(
                     Caregiver.dailySummary(d, LocalDate.now(), LocalDateTime.now())));
+
+        shopCard();
+    }
+
+    /**
+     * The way into the accessories shop, at the foot of Progress rather than in the tab bar: it is
+     * the one commercial corner of the app and has no business sitting beside Today. Compiled out
+     * of a pilot build, so trial participants never see it.
+     */
+    private void shopCard() {
+        if (!BuildConfig.SHOP) return;
+        LinearLayout c = Max.edgeCard(body, Max.pink());
+        c.setOnClickListener(v -> startActivity(new Intent(this, ShopActivity.class)));
+        LinearLayout top = Ui.row(c);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.addView(Ui.iconCircle(this, R.drawable.ic_cart,
+                Color.argb(Ui.dark ? 54 : 30, 232, 64, 138), Max.pink(), 52));
+        LinearLayout words = Ui.vbox(this);
+        LinearLayout.LayoutParams wl = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+        wl.leftMargin = Ui.dp(this, 12);
+        top.addView(words, wl);
+        Ui.text(words, "Things that help", 19, Ui.INK, true);
+        Ui.text(words, "Pill boxes, reminders, measuring tools", 15, Ui.MUTED, false);
+        Max.tag(c, "Affiliate links", Color.argb(Ui.dark ? 54 : 30, 232, 64, 138), Max.pink());
     }
 
     /** Dark text for a status background (green, amber or red), readable on both themes. */
@@ -2056,6 +2096,11 @@ public class MainActivity extends Activity {
     }
 
     private void legendItem(LinearLayout row, int color, String label) {
+        legendItem(row, color, label, Ui.MUTED);
+    }
+
+    /** The same legend over a coloured panel, where the label needs its own colour. */
+    private void legendItem(LinearLayout row, int color, String label, int textColor) {
         View sq = new View(this);
         sq.setBackground(Ui.rounded(this, color, 3));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(this, 12), Ui.dp(this, 12));
@@ -2064,7 +2109,7 @@ public class MainActivity extends Activity {
         TextView t = new TextView(this);
         t.setText(t(label));
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        t.setTextColor(Ui.MUTED);
+        t.setTextColor(textColor);
         t.setTypeface(Ui.regular());
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         tl.rightMargin = Ui.dp(this, 14);
