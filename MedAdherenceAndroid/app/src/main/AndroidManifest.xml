@@ -80,6 +80,14 @@
             android:screenOrientation="portrait"
             android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
 
+        <!-- Accessories shop: non-drug items only, links handed to the browser. Hidden entirely in
+             a pilot build (-PpilotBuild=true), where the activity finishes as soon as it opens. -->
+        <activity
+            android:name=".ui.ShopActivity"
+            android:exported="false"
+            android:label="MedAdherence"
+            android:screenOrientation="portrait" />
+
         <!-- Read-only access to files the patient shares (the PDF report). -->
         <provider
             android:name=".ui.ShareProvider"
