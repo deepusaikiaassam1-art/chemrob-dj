@@ -70,21 +70,27 @@ public class ShopActivity extends Activity {
 
     /** Title panel: loud on purpose, and honest about what the screen is. */
     private void hero(LinearLayout body) {
-        LinearLayout h = Max.hero(body, Max.violet(), Max.pink());
+        LinearLayout h = Ui.vbox(this);
+        h.setBackground(Ui.rounded(this, Ui.PRIMARY, 24));
+        int hp = Ui.dp(this, 20);
+        h.setPadding(hp, hp, hp, hp);
+        body.addView(h, Ui.matchWrap(this, 14));
         LinearLayout tags = Ui.row(h);
         tags.setGravity(Gravity.START);
-        Max.tag(tags, "Shop", Color.argb(60, 255, 255, 255), Color.WHITE);
-        Max.tag(tags, "Affiliate links", Color.argb(60, 255, 255, 255), Color.WHITE);
-        Max.display(h, "Things that help you finish the course", 30, Color.WHITE)
+        int chipTint = Color.argb(56, 255, 255, 255);
+        Care.chip(tags, "Shop", chipTint, Ui.ON_PRIMARY);
+        Care.chip(tags, "Affiliate links", chipTint, Ui.ON_PRIMARY);
+        Ui.text(h, "Things that help you finish the course", 26, Ui.ON_PRIMARY, true)
                 .setPadding(0, Ui.dp(this, 12), 0, 0);
         TextView sub = Ui.text(h, "Pill boxes, reminders and measuring tools. No medicines.",
-                17, Color.argb(225, 255, 255, 255), false);
+                16, Care.blend(Ui.ON_PRIMARY, Ui.PRIMARY, 0.18f), false);
         sub.setPadding(0, Ui.dp(this, 8), 0, 0);
     }
 
     /** The commercial disclosure. First thing under the hero, on every visit, not dismissible. */
     private void disclosure(LinearLayout body) {
-        LinearLayout card = Max.edgeCard(body, Max.amber());
+        LinearLayout card = Care.panel(body);
+        Care.chip(card, "Affiliate links", Care.State.DUE);
         Ui.text(card, "Why you are seeing this", 17, Ui.INK, true);
         Ui.text(card, Shop.DISCLOSURE, 15, Ui.MUTED, false)
                 .setPadding(0, Ui.dp(this, 6), 0, 0);
@@ -99,20 +105,20 @@ public class ShopActivity extends Activity {
         List<ShopItem> items = Shop.itemsIn(category);
         if (items.isEmpty()) return;
 
-        int accent = Max.accent(category.ordinal());
-        Max.banner(body, category.label, accent);
+        int accent = Ui.PRIMARY;
+        Care.section(body, category.label);
 
         for (ShopItem item : items) tile(body, item, accent);
     }
 
     /** One product: icon chip, name, a tilted price sticker, what it is for, and the shop button. */
     private void tile(LinearLayout body, ShopItem item, int accent) {
-        LinearLayout card = Max.frameCard(body, accent);
+        LinearLayout card = Care.panel(body);
 
         LinearLayout top = Ui.row(card);
         int iconRes = getResources().getIdentifier(item.icon, "drawable", getPackageName());
         if (iconRes != 0) {
-            FrameLayout chip = Ui.iconCircle(this, iconRes, accent, Color.WHITE, 52);
+            FrameLayout chip = Ui.iconCircle(this, iconRes, Care.wash(), accent, 52);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.rightMargin = Ui.dp(this, 12);
@@ -121,18 +127,17 @@ public class ShopActivity extends Activity {
         LinearLayout words = Ui.vbox(this);
         top.addView(words, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         Ui.text(words, item.name, 20, Ui.INK, true);
-        Max.priceTag(words, tf("about %s", "₹" + item.approxRupees), accent);
+        Ui.text(words, tf("about %s", "₹" + item.approxRupees), 16, accent, true)
+                .setPadding(0, Ui.dp(this, 2), 0, 0);
 
         Ui.text(card, item.blurb, 16, Ui.MUTED, false)
                 .setPadding(0, Ui.dp(this, 12), 0, 0);
 
-        Max.bigAction(card, "See it in the shop", accent, Max.lighten(accent, 0.3f),
-                v -> open(item));
+        Ui.button(card, "See it in the shop", Ui.PRIMARY, v -> open(item));
     }
 
     /** Closing note: the shop is optional, and the app does not need it. */
     private void footer(LinearLayout body) {
-        Max.rule(body, Ui.LINE, Ui.LINE);
         Ui.text(body, "Prices change, so these are rough. The app works the same whether or not "
                 + "you buy anything.", 14, Ui.MUTED, false)
                 .setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 4));
