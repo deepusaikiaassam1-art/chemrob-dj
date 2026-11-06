@@ -22,13 +22,23 @@ To install it:
 
 ## What it does
 
-- **Two looks, on purpose (1.9).** The screens a patient reads while deciding whether to swallow a
-  tablet — Today, the ringing alarm, the camera-observed dose — stay plain, high-contrast and
-  large-typed, because that is what makes the app usable by the older patients it was built for.
-  The screens they only browse — Progress, rewards, the welcome screen and the shop — carry a
-  maximalist treatment instead: saturated gradients, patterned panels, sticker tiles and oversized
-  display type (`ui/Max.java`). The split is the whole point: loud where it costs nothing, calm
-  where a mistake costs a dose.
+- **"Clinical Clarity & Care" (1.10).** One design system across the whole app, built around deep
+  clinical teal on cool porcelain rather than sterile white (`ui/Care.java`, palette in `ui/Ui.java`):
+  - Dose cards carry a **4px state strip** down the left edge — green taken, amber due, grey
+    upcoming, rose missed — so the state reads before any of the words do.
+  - Status is **never colour alone**: every chip carries a word, and the states differ in
+    lightness as well as hue.
+  - Triage colours are fixed: adhered `#059669`, pending `#D97706`, missed `#E11D48`, each paired
+    with a low-saturation tint and deeply saturated text.
+  - Touch targets stay at 52px and above, body text never below 14px, and selection controls get a
+    52px row.
+  - **Atkinson Hyperlegible stays** as the typeface. The design system standardises on Plus Jakarta
+    Sans, but Atkinson disambiguates 1/l/I and 0/O, and for an app showing dosages to people with
+    low vision that outranks the brand. This is the one place the app departs from the system on
+    purpose.
+
+  This replaced the maximalist treatment 1.9 carried on Progress, rewards and the shop: gradients
+  and patterned panels fought the legibility the app was redesigned for in 1.8.
 - **Accessories shop (1.9).** A separate window, reached from the foot of Progress, listing
   non-drug accessories — pill boxes, a vibrating reminder watch, a pill cutter, measuring spoons,
   a thermometer, masks — with affiliate links, so the project has a way to pay for itself.
@@ -320,7 +330,7 @@ app/src/main/java/com/chemrob/medadherence/
            translations (I18n), JSON, the accessories catalogue (Shop, ShopItem)
   alarm/   AlarmManager scheduling, alarm receiver, boot receiver, ringing notification
   ui/      MainActivity (welcome, profile + all tabs), HoldButton (press-and-hold "I took it"), EmergencyActivity (SOS), FaceEnrollActivity (face scan),
-           ShopActivity (accessories shop), Max (the maximalist look: gradients, stickers, display type),
+           ShopActivity (accessories shop), Care (the design system: dose cards, status chips, triage colours),
            Vision (ML Kit wrapper), Voice (spoken guidance), AlarmActivity (lock-screen ringing with drug photo),
            ObserveActivity (observed-dose camera), PhotoActivity (medicine photo), Ui (theme and widgets),
            FaceRecognizer (TensorFlow Lite), PdfReport, ShareProvider (sharing the PDF), Lang (languages)

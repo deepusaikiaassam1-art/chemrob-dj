@@ -49,7 +49,7 @@ public final class Ui {
     public static int BG, SURFACE, SURFACE_VARIANT, PRIMARY, ON_PRIMARY, PRIMARY_CONTAINER, ON_PRIMARY_CONTAINER;
     public static int INK, MUTED, LINE, GOOD, WARN, BAD, ON_STATUS, DUE_BG, ALERT_BG, GOOD_BG;
     /** Light-theme colours for surfaces that stay white in both themes (the camera sheet). */
-    public static final int PRIMARY_LIGHT = 0xFF4F46E5, INK_LIGHT = 0xFF1A1C29, MUTED_LIGHT = 0xFF5E6275, GOOD_LIGHT = 0xFF1E9E63;
+    public static final int PRIMARY_LIGHT = 0xFF0D9488, INK_LIGHT = 0xFF0F172A, MUTED_LIGHT = 0xFF64748B, GOOD_LIGHT = 0xFF059669;
     /** Kept for older call sites: ACCENT is the primary colour, MUTED buttons render as tonal. */
     public static int ACCENT;
 
@@ -88,18 +88,21 @@ public final class Ui {
 
     static void setPalette(boolean isDark) {
         dark = isDark;
+        // "Clinical Clarity & Care": deep clinical teals on cool porcelain rather than sterile
+        // white, with a three-colour triage set (adhered / pending / missed) that never relies on
+        // hue alone. Body ink sits at AAA contrast on the canvas.
         if (!isDark) {
-            BG = c("#F4F5FB"); SURFACE = c("#FFFFFF"); SURFACE_VARIANT = c("#ECEEF8");
-            PRIMARY = c("#4F46E5"); ON_PRIMARY = Color.WHITE; PRIMARY_CONTAINER = c("#E3E1FF"); ON_PRIMARY_CONTAINER = c("#1E1A6B");
-            INK = c("#1A1C29"); MUTED = c("#5E6275"); LINE = c("#DCDEEA");
-            GOOD = c("#1E9E63"); WARN = c("#C77C00"); BAD = c("#D93F3F"); ON_STATUS = Color.WHITE;
-            DUE_BG = c("#FFF3D6"); ALERT_BG = c("#FDE5E5"); GOOD_BG = c("#DDF5E8");
+            BG = c("#F8FAFC"); SURFACE = c("#FFFFFF"); SURFACE_VARIANT = c("#F1F5F9");
+            PRIMARY = c("#0D9488"); ON_PRIMARY = Color.WHITE; PRIMARY_CONTAINER = c("#CCFBF1"); ON_PRIMARY_CONTAINER = c("#115E59");
+            INK = c("#0F172A"); MUTED = c("#64748B"); LINE = c("#CBD5E1");
+            GOOD = c("#059669"); WARN = c("#D97706"); BAD = c("#E11D48"); ON_STATUS = Color.WHITE;
+            DUE_BG = c("#FEF3C7"); ALERT_BG = c("#FFE4E6"); GOOD_BG = c("#D1FAE5");
         } else {
-            BG = c("#111320"); SURFACE = c("#1B1E2E"); SURFACE_VARIANT = c("#262A3D");
-            PRIMARY = c("#A5A0FF"); ON_PRIMARY = c("#1E1A6B"); PRIMARY_CONTAINER = c("#3A36A0"); ON_PRIMARY_CONTAINER = c("#E3E1FF");
-            INK = c("#E7E8F2"); MUTED = c("#A3A7BD"); LINE = c("#33374C");
-            GOOD = c("#4CD08E"); WARN = c("#F2B233"); BAD = c("#FF7A7A"); ON_STATUS = c("#111320");
-            DUE_BG = c("#3A2F12"); ALERT_BG = c("#3D1F22"); GOOD_BG = c("#173327");
+            BG = c("#0B1220"); SURFACE = c("#131C2B"); SURFACE_VARIANT = c("#1C2638");
+            PRIMARY = c("#5EEAD4"); ON_PRIMARY = c("#042F2E"); PRIMARY_CONTAINER = c("#115E59"); ON_PRIMARY_CONTAINER = c("#CCFBF1");
+            INK = c("#E2E8F0"); MUTED = c("#94A3B8"); LINE = c("#2A3649");
+            GOOD = c("#34D399"); WARN = c("#FBBF24"); BAD = c("#FB7185"); ON_STATUS = c("#0B1220");
+            DUE_BG = c("#3A2E12"); ALERT_BG = c("#3D1B24"); GOOD_BG = c("#0D3B2E");
         }
         ACCENT = PRIMARY;
     }
@@ -205,12 +208,26 @@ public final class Ui {
     public static LinearLayout card(ViewGroup parent, int color) {
         Context c = parent.getContext();
         LinearLayout card = vbox(c);
-        card.setBackground(rounded(c, color, 22));
+        ghostBorder(card, color);
         card.setElevation(dark ? 0 : dp(c, 2));
         int p = dp(c, 18);
         card.setPadding(p, p, p, p);
         parent.addView(card, matchWrap(c, 14));
         return card;
+    }
+
+    /**
+     * The system's "ghost border": a 1px low-contrast outline on a resting card, so a white
+     * surface still separates from the porcelain canvas without a hard shadow.
+     */
+    private static void ghostBorder(LinearLayout card, int fill) {
+        Context c = card.getContext();
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(fill);
+        g.setCornerRadius(dp(c, 16));
+        g.setStroke(Math.max(1, dp(c, 1)), dark ? Color.argb(40, 148, 163, 184)
+                : Color.argb(153, 203, 213, 225));
+        card.setBackground(g);
     }
 
     public static TextView text(ViewGroup parent, CharSequence s, float sp, int color, boolean bold) {
@@ -254,7 +271,7 @@ public final class Ui {
         int fg = tonal ? INK : color == PRIMARY ? ON_PRIMARY : color == PRIMARY_CONTAINER ? ON_PRIMARY_CONTAINER
                 : color == SURFACE ? PRIMARY : ON_STATUS;
         b.setTextColor(fg);
-        b.setBackground(pressable(c, bg, 18));
+        b.setBackground(pressable(c, bg, 16));
         b.setStateListAnimator(null);
         b.setOnClickListener(l);
         LinearLayout.LayoutParams lp = isRow(parent)
@@ -319,6 +336,7 @@ public final class Ui {
         cb.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
         cb.setButtonTintList(ColorStateList.valueOf(PRIMARY));
         cb.setChecked(value);
+        cb.setMinHeight(dp(parent.getContext(), 52));
         parent.addView(cb, matchWrap(parent.getContext(), 10));
         return cb;
     }

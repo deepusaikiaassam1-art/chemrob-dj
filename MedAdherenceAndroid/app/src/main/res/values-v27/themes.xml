@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="AppTheme.Light" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:colorPrimary">#4F46E5</item>
-        <item name="android:colorPrimaryDark">#4F46E5</item>
-        <item name="android:colorAccent">#4F46E5</item>
+        <item name="android:colorPrimary">#0D9488</item>
+        <item name="android:colorPrimaryDark">#0D9488</item>
+        <item name="android:colorAccent">#0D9488</item>
         <item name="android:fontFamily">@font/atkinson</item>
         <item name="android:windowBackground">@color/bg_light</item>
         <item name="android:statusBarColor">@color/bg_light</item>
